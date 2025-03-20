@@ -20,8 +20,8 @@ import { AppHeader } from "./header";
 import { useEffect, useState } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/components/themeProvider";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -73,11 +73,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <ThemeProvider>
+        <ThemeProvider>
+          <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
             <Layout>{children}</Layout>
-          </ThemeProvider>
-        </AuthProvider>
+          </GoogleOAuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

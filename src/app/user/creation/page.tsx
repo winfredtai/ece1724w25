@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/utils/supabase/client";
 import {
   Input,
   Button,
@@ -60,7 +60,9 @@ interface UserCreation {
 
 const MyCreationsPage: React.FC = () => {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const supabase = createClient();
+  const [isLoading, setIsLoading] = useState(true);
+  const [supaUser, setSupaUser] = useState<any>(null);
 
   // Creation states
   const [creations, setCreations] = useState<UserCreation[]>([]);
@@ -84,6 +86,43 @@ const MyCreationsPage: React.FC = () => {
 
   // Sorting
   const [sortOption, setSortOption] = useState("newest");
+
+  // 检查 Supabase 认证状态
+  useEffect(() => {
+    const checkSupabaseAuth = async () => {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data.session) {
+          // 获取用户信息
+          const { data: userData, error: userError } = await supabase.auth.getUser();
+          if (userError) {
+            throw userError;
+          }
+          
+          if (userData.user) {
+            setSupaUser(userData.user);
+          } else {
+            router.push("/login");
+          }
+        } else {
+          router.push("/login");
+        }
+      } catch (err) {
+        console.error("检查认证状态时出错:", err);
+        router.push("/login");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkSupabaseAuth();
+  }, [router, supabase]);
 
   // Load mock data
   useEffect(() => {
@@ -243,13 +282,6 @@ const MyCreationsPage: React.FC = () => {
     setFilteredCreations(results);
     setTotalPages(Math.ceil(results.length / itemsPerPage));
   }, [creations, searchQuery, sortOption]);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, isLoading, router]);
 
   const getPaginatedCreations = (currentTab: string = "all") => {
     let filtered = [...filteredCreations];
@@ -490,8 +522,12 @@ const MyCreationsPage: React.FC = () => {
     );
   };
 
-  if (!user) {
-    return null; // Or a loading state
+  if (isLoading) {
+    return <div className="flex justify-center items-center min-h-screen">加载中...</div>;
+  }
+
+  if (!supaUser) {
+    return null; // 重定向到登录页面已在useEffect中处理
   }
 
   return (
@@ -499,7 +535,7 @@ const MyCreationsPage: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-1">我的创作</h1>
-          <p className="text-muted-foreground">查看和管理您的所有AI生成内容</p>
+          <div className="text-muted-foreground">查看和管理您的所有AI生成内容</div>
         </div>
         <Button onClick={() => router.push("/text-to-video")}>
           <Film className="h-4 w-4 mr-2" />

@@ -1,9 +1,9 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Login from "@/components/login";
 import SignUp from "@/components/signup";
-import { useAuth } from "@/context/AuthContext";
+import { createClient } from "@/utils/supabase/client";
 import {
   Button,
   Card,
@@ -16,21 +16,47 @@ import { ArrowLeft, LogIn, UserPlus } from "lucide-react";
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
-  const [showModal, setShowModal] = React.useState(false);
-  const [isLoginMode, setIsLoginMode] = React.useState(true);
+  const supabase = createClient();
+  const [isSupaAuthenticated, setIsSupaAuthenticated] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Redirect to profile if already logged in
-  React.useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/profile");
-    }
-  }, [isAuthenticated, router]);
+  // 检查是否已经登录
+  useEffect(() => {
+    const checkSupabaseAuth = async () => {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data.session) {
+          setIsSupaAuthenticated(true);
+          // 已登录，重定向到个人资料页面
+          router.push("/user/profile");
+        }
+      } catch (err) {
+        console.error("检查认证状态时出错:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkSupabaseAuth();
+  }, [router, supabase]);
 
   const handleOpenModal = (loginMode: boolean) => {
     setIsLoginMode(loginMode);
     setShowModal(true);
   };
+
+  // 如果正在加载或已验证，不显示页面内容
+  if (isLoading || isSupaAuthenticated) {
+    return <div className="flex justify-center items-center min-h-screen">加载中...</div>;
+  }
 
   return (
     <>

@@ -1,8 +1,8 @@
 "use client"; // This is a client component that uses React hooks
 
-import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import {
   Input,
   Button,
@@ -75,13 +75,16 @@ interface UserSubscription {
 
 const ProfilePage: React.FC = () => {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading, updateProfile, logout } = useAuth();
+  const supabase = createClient();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [supaUser, setSupaUser] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [profileForm, setProfileForm] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    preferences: user?.preferences || {
-      theme: "system",
+    name: "",
+    email: "",
+    preferences: {
+      theme: "system" as "light" | "dark" | "system",
       notifications: true,
       language: "zh-CN",
     },
@@ -161,14 +164,64 @@ const ProfilePage: React.FC = () => {
     currentPage * itemsPerPage,
   );
 
-  // Redirects to login if not authenticated and not loading
-  React.useEffect(() => {
-    // Only redirect if we're not loading and the user is not authenticated
-    // This prevents redirection during the initial auth check
-    if (!isAuthenticated && !isLoading) {
-      router.push("/login");
+  // 获取 Supabase 用户信息
+  useEffect(() => {
+    const checkSupabaseAuth = async () => {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data.session) {
+          setIsAuthenticated(true);
+          
+          // 获取用户信息
+          const { data: userData, error: userError } = await supabase.auth.getUser();
+          if (userError) {
+            throw userError;
+          }
+          
+          if (userData.user) {
+            setSupaUser(userData.user);
+            
+            // 设置表单默认值
+            setProfileForm({
+              name: userData.user.user_metadata?.full_name || userData.user.user_metadata?.name || "",
+              email: userData.user.email || "",
+              preferences: {
+                theme: "system",
+                notifications: true,
+                language: "zh-CN",
+              },
+            });
+          }
+        } else {
+          router.push("/login");
+        }
+      } catch (err) {
+        console.error("检查认证状态时出错:", err);
+        router.push("/login");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkSupabaseAuth();
+  }, [router, supabase]);
+
+  // 处理 Supabase 登出
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.push("/");
+    } catch (error) {
+      console.error("登出失败:", error);
     }
-  }, [isAuthenticated, isLoading, router]);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -190,16 +243,10 @@ const ProfilePage: React.FC = () => {
 
   const handleSaveProfile = async () => {
     try {
-      if (user) {
-        await updateProfile({
-          name: profileForm.name,
-          email: profileForm.email,
-          preferences: profileForm.preferences,
-        });
-      }
+      // 暂未实现真正的保存逻辑，仅模拟效果
       setIsEditing(false);
     } catch (error) {
-      console.error("Failed to update profile:", error);
+      console.error("更新资料失败:", error);
     }
   };
 
@@ -244,8 +291,41 @@ const ProfilePage: React.FC = () => {
 
   const planInfo = getSubscriptionPlanInfo(subscription.plan);
 
-  if (!user) {
-    return null; // Or a loading state
+  // 获取用户展示信息
+  const getUserInitials = () => {
+    if (supaUser?.user_metadata?.full_name) {
+      const nameParts = supaUser.user_metadata.full_name.split(' ');
+      if (nameParts.length >= 2) {
+        return (nameParts[0][0] + nameParts[1][0]).toUpperCase();
+      }
+      return supaUser.user_metadata.full_name.substring(0, 2).toUpperCase();
+    }
+    
+    if (supaUser?.email) {
+      return supaUser.email.substring(0, 2).toUpperCase();
+    }
+    
+    return "?";
+  };
+  
+  const getAvatarUrl = () => {
+    if (supaUser?.user_metadata?.avatar_url) {
+      return supaUser.user_metadata.avatar_url;
+    }
+    
+    if (supaUser?.user_metadata?.picture) {
+      return supaUser.user_metadata.picture;
+    }
+    
+    return "";
+  };
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center min-h-screen">加载中...</div>;
+  }
+
+  if (!supaUser) {
+    return null; // 重定向到登录页面已在useEffect中处理
   }
 
   return (
@@ -255,18 +335,20 @@ const ProfilePage: React.FC = () => {
         <div className="bg-background rounded-lg p-6 md:p-8 flex flex-col md:flex-row items-center justify-between">
           <div className="flex flex-col md:flex-row items-center mb-4 md:mb-0">
             <Avatar className="h-24 w-24 md:mr-6 mb-4 md:mb-0 border-4 border-background shadow-lg">
-              <AvatarImage src={user.avatarUrl} />
+              <AvatarImage src={getAvatarUrl()} />
               <AvatarFallback className="bg-primary/10 text-primary text-2xl">
-                {user.initials}
+                {getUserInitials()}
               </AvatarFallback>
             </Avatar>
             <div className="text-center md:text-left">
-              <h1 className="text-3xl font-bold mb-1">{user.name}</h1>
-              <p className="text-muted-foreground mb-2">{user.email}</p>
+              <h1 className="text-3xl font-bold mb-1">
+                {supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email}
+              </h1>
+              <div className="text-muted-foreground mb-2">{supaUser.email}</div>
               <div className="flex items-center justify-center md:justify-start space-x-2">
                 <Badge variant="outline" className="flex items-center">
                   <Users className="h-3 w-3 mr-1" />
-                  {user.role === "admin" ? "管理员" : "普通用户"}
+                  普通用户
                 </Badge>
                 <Badge className={`flex items-center ${planInfo.color}`}>
                   <Crown className="h-3 w-3 mr-1" />
@@ -347,17 +429,17 @@ const ProfilePage: React.FC = () => {
                 <>
                   <div>
                     <h3 className="text-sm font-medium mb-1">账户创建时间</h3>
-                    <p className="text-sm flex items-center">
+                    <div className="text-sm flex items-center">
                       <Calendar className="h-4 w-4 mr-1" />
-                      {formatDate(user.createdAt)}
-                    </p>
+                      {formatDate(supaUser.created_at)}
+                    </div>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium mb-1">最近登录时间</h3>
-                    <p className="text-sm flex items-center">
+                    <div className="text-sm flex items-center">
                       <Clock className="h-4 w-4 mr-1" />
-                      {formatDate(user.lastLogin)} {formatTime(user.lastLogin)}
-                    </p>
+                      {formatDate(supaUser.user_metadata?.last_sign_in_at)} {formatTime(supaUser.user_metadata?.last_sign_in_at)}
+                    </div>
                   </div>
                 </>
               )}
@@ -367,7 +449,7 @@ const ProfilePage: React.FC = () => {
                 variant="destructive"
                 size="sm"
                 className="w-full"
-                onClick={logout}
+                onClick={handleLogout}
               >
                 退出登录
               </Button>

@@ -1,6 +1,5 @@
 // src/components/signup.tsx
 import { useState, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
 import {
   Card,
   CardHeader,
@@ -12,7 +11,7 @@ import {
   Separator,
 } from "@/components/ui";
 import { Mail, AlertCircle, X } from "lucide-react";
-import { useGoogleLogin } from "@react-oauth/google";
+import { createClient } from "@/utils/supabase/client";
 
 interface SignUpProps {
   onClose?: () => void;
@@ -24,7 +23,7 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
-  const { register, googleLogin } = useAuth();
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,74 +32,66 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address");
+      setError("请输入有效的电子邮件地址");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      await register(email);
+      // 使用 Supabase 发送魔法链接邮件
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      
+      if (error) throw error;
+      
       setEmailSent(true);
     } catch (err) {
-      setError("Registration failed. Please check your email and try again.");
-      console.error("Registration error:", err);
+      setError("注册失败。请检查您的电子邮件地址并重试。");
+      console.error("注册错误:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleSignUp = useGoogleLogin({
-    onSuccess: async (response) => {
-      try {
-        setError(null);
-        setIsLoading(true);
-
-        if (!response.access_token) {
-          throw new Error("Google login failed: No access token received");
-        }
-
-        const userInfoResponse = await fetch(
-          "https://www.googleapis.com/oauth2/v3/userinfo",
-          {
-            headers: {
-              Authorization: `Bearer ${response.access_token}`,
-            },
+  // 处理 Supabase Google OAuth 注册
+  const handleSupabaseGoogleSignUp = async () => {
+    try {
+      setError(null);
+      setIsLoading(true);
+      
+      // 指定重定向URL，确保正确处理回调
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
           },
-        );
-
-        if (!userInfoResponse.ok) {
-          throw new Error(
-            `Failed to fetch user info: ${userInfoResponse.status}`,
-          );
-        }
-
-        const userInfo = await userInfoResponse.json();
-
-        if (!userInfo.email) {
-          throw new Error("Google sign up failed: Could not retrieve email");
-        }
-
-        await googleLogin(userInfo);
-        if (onClose) onClose();
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error
-            ? `Google sign up failed: ${error.message}`
-            : "Google sign up failed. Please try again.";
-
-        setError(errorMessage);
-        console.error("Google sign up error:", error);
-      } finally {
-        setIsLoading(false);
+        },
+      });
+      
+      if (error) {
+        throw error;
       }
-    },
-    onError: (error) => {
-      setError("Google sign up failed. Please try again.");
-      console.error("Google sign up error:", error);
+      
+      // Supabase会自动重定向到Google授权页面
+    } catch (error) {
+      const errorMessage = error instanceof Error
+        ? `Google 注册失败: ${error.message}`
+        : "Google 注册失败，请重试。";
+      
+      setError(errorMessage);
       setIsLoading(false);
-    },
-  });
+    }
+  };
 
   // Disable scrolling when modal is open
   useEffect(() => {
@@ -132,7 +123,7 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
 
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            Sign up for Karavideo.ai
+            注册 Karavideo.ai
           </CardTitle>
         </CardHeader>
 
@@ -156,8 +147,7 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
               </svg>
               <span>
-                Verification email sent! Please check your inbox to complete
-                registration.
+                验证邮件已发送！请检查您的收件箱完成注册。
               </span>
             </div>
           )}
@@ -177,7 +167,7 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
                 variant="outline"
                 type="button"
                 className="w-full flex items-center justify-center gap-2 border-border hover:bg-accent transition-colors"
-                onClick={() => handleGoogleSignUp()}
+                onClick={handleSupabaseGoogleSignUp}
                 disabled={isLoading}
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -198,7 +188,7 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
                     fill="#34A853"
                   />
                 </svg>
-                <span>Continue with Google</span>
+                <span>使用 Google 注册</span>
               </Button>
 
               <div className="relative">
@@ -207,7 +197,7 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with
+                    或使用邮箱注册
                   </span>
                 </div>
               </div>
@@ -219,7 +209,7 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
                     <Mail className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                     <Input
                       type="email"
-                      placeholder="Email"
+                      placeholder="电子邮箱"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-10"
@@ -228,13 +218,12 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    We&apos;ll send you a verification email to complete your
-                    registration.
+                    我们将向您发送验证邮件以完成注册。
                   </p>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Sending verification..." : "Sign Up"}
+                  {isLoading ? "发送验证邮件中..." : "注册"}
                 </Button>
               </form>
             </>
@@ -242,19 +231,19 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
 
           {emailSent && (
             <Button onClick={onClose} className="w-full mt-2">
-              Close
+              关闭
             </Button>
           )}
         </CardContent>
 
         <CardFooter className="flex flex-col border-t pt-6">
           <div className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
+            已经有账号？{" "}
             <button
               onClick={onSwitchToLogin}
               className="font-medium text-primary hover:text-primary/80 hover:cursor-pointer"
             >
-              Log in
+              登录
             </button>
           </div>
         </CardFooter>

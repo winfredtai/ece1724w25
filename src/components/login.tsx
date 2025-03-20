@@ -1,6 +1,5 @@
 // src/components/login.tsx
 import { useState, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
 import {
   Card,
   CardHeader,
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui";
 import { Eye, EyeOff, Mail, Lock, AlertCircle, X } from "lucide-react";
 import { useGoogleLogin } from "@react-oauth/google";
+import { createClient } from "@/utils/supabase/client";
 
 interface LoginProps {
   onClose?: () => void;
@@ -25,7 +25,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login, googleLogin } = useAuth();
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,69 +33,60 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      // 使用 Supabase 登录
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+      
+      // 设置登录成功标记，帮助其他组件检测登录状态变化
+      document.cookie = "auth_success=true; path=/;";
+      
       if (onClose) onClose(); // Close the modal after successful login
     } catch (err) {
-      setError("Login failed. Please check your credentials and try again.");
-      console.error("Login error:", err);
+      setError("登录失败。请检查您的凭据并重试。");
+      console.error("登录错误:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = useGoogleLogin({
-    onSuccess: async (response) => {
-      try {
-        setError(null);
-        setIsLoading(true);
-
-        if (!response.access_token) {
-          throw new Error("Google login failed: No access token received");
-        }
-
-        const userInfoResponse = await fetch(
-          "https://www.googleapis.com/oauth2/v3/userinfo",
-          {
-            headers: {
-              Authorization: `Bearer ${response.access_token}`,
-            },
+  // 处理 Supabase Google OAuth 登录
+  const handleSupabaseGoogleLogin = async () => {
+    try {
+      setError(null);
+      setIsLoading(true);
+      
+      // 指定重定向URL，确保正确处理回调
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
           },
-        );
-
-        // Check if response was successful
-        if (!userInfoResponse.ok) {
-          throw new Error(
-            `Failed to fetch user info: ${userInfoResponse.status}`,
-          );
-        }
-
-        const userInfo = await userInfoResponse.json();
-
-        // Validate required user info fields
-        if (!userInfo.email) {
-          throw new Error("Google login failed: Could not retrieve email");
-        }
-
-        await googleLogin(userInfo);
-        if (onClose) onClose();
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error
-            ? `Google login failed: ${error.message}`
-            : "Google login failed. Please try again.";
-
-        setError(errorMessage);
-        console.error("Google login error:", error);
-      } finally {
-        setIsLoading(false);
+        },
+      });
+      
+      if (error) {
+        throw error;
       }
-    },
-    onError: (error) => {
-      setError("Google login failed. Please try again.");
-      console.error("Google login error:", error);
+      
+      // Supabase会自动重定向到Google授权页面
+    } catch (error) {
+      const errorMessage = error instanceof Error
+        ? `Google 登录失败: ${error.message}`
+        : "Google 登录失败，请重试。";
+      
+      setError(errorMessage);
       setIsLoading(false);
-    },
-  });
+    }
+  };
 
   // Disable scrolling when modal is open
   useEffect(() => {
@@ -148,7 +139,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
             variant="outline"
             type="button"
             className="w-full flex items-center justify-center gap-2 border-border hover:bg-accent transition-colors"
-            onClick={() => handleGoogleLogin()}
+            onClick={handleSupabaseGoogleLogin}
             disabled={isLoading}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -169,7 +160,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                 fill="#34A853"
               />
             </svg>
-            <span>Continue with Google</span>
+            <span>通过Google登录</span>
           </Button>
 
           <div className="relative">
@@ -178,7 +169,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
+                或者使用邮箱密码
               </span>
             </div>
           </div>
@@ -190,7 +181,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                 <Mail className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder="邮箱"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
@@ -205,7 +196,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                 <Lock className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Password"
+                  placeholder="密码"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
@@ -216,7 +207,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  disabled={isLoading}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" />
@@ -227,29 +218,25 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
               </div>
             </div>
 
-            <div className="text-right">
-              <a
-                href="#"
-                className="text-sm font-medium text-primary hover:text-primary/80"
-              >
-                Forgot password?
-              </a>
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Logging in..." : "Log In"}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? "Loading..." : "登录"}
             </Button>
           </form>
         </CardContent>
 
-        <CardFooter className="flex flex-col border-t pt-6">
-          <div className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account yet?{" "}
+        <CardFooter className="flex flex-col space-y-2">
+          <div className="text-sm text-center text-muted-foreground">
+            没有账号？{" "}
             <button
+              type="button"
               onClick={onSwitchToSignUp}
-              className="font-medium text-primary hover:text-primary/80 hover:cursor-pointer"
+              className="text-primary hover:underline"
             >
-              Sign up
+              注册
             </button>
           </div>
         </CardFooter>

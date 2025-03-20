@@ -139,14 +139,14 @@ const NotFound: React.FC = () => {
             页面未找到
           </motion.h2>
 
-          <motion.p
+          <motion.div
             className="text-muted-foreground mb-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
           >
             您访问的页面不存在或已被移除。请检查URL或返回首页。
-          </motion.p>
+          </motion.div>
 
           {/* Buttons with hover animations */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -200,7 +200,7 @@ const NotFound: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 1.3 }}
           >
-            <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
+            <div className="text-sm text-muted-foreground flex items-center justify-center gap-2">
               <motion.div
                 animate={{
                   scale: [1, 1.1, 1],
@@ -224,7 +224,7 @@ const NotFound: React.FC = () => {
               >
                 {countdown}秒后自动跳转到首页...
               </motion.span>
-            </p>
+            </div>
           </motion.div>
         </motion.div>
       </motion.div>

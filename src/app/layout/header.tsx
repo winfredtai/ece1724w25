@@ -10,6 +10,7 @@ import { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Login from "@/components/login";
 import { createClient } from "@/utils/supabase/client";
+import { User } from '@supabase/supabase-js';
 
 interface AppHeaderProps extends React.HTMLAttributes<HTMLElement> {
   className?: string;
@@ -24,7 +25,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   // Supabase 状态
-  const [supaUser, setSupaUser] = useState<any>(null);
+  const [supaUser, setSupaUser] = useState<User | null>(null);
   const [isSupaAuthenticated, setIsSupaAuthenticated] = useState(false);
   const supabase = createClient();
 
@@ -54,8 +55,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           setIsSupaAuthenticated(false);
           setSupaUser(null);
         }
-      } catch (err) {
-        // 错误处理
+      } catch (_) {
+        // 错误处理，但不使用错误对象
       }
     };
     
@@ -95,7 +96,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       authListener.subscription.unsubscribe();
       clearInterval(cookieInterval);
     };
-  }, []);
+  }, [supabase.auth]);
 
   const toggleDropdown = () => {
     setDropdownOpen(!dropdownOpen);

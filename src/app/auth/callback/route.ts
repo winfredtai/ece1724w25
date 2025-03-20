@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       }
       
       return NextResponse.redirect(`${origin}${next}`)
-    } catch (_) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       // 捕获错误但不使用错误对象
       return NextResponse.redirect(`${origin}/auth/callback-error`)
     }

@@ -55,7 +55,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           setIsSupaAuthenticated(false);
           setSupaUser(null);
         }
-      } catch (_) {
+      } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
         // 错误处理，但不使用错误对象
       }
     };

@@ -1,4 +1,4 @@
-"use client";
+"use client"; // This page uses React hooks so it must be a client component
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";

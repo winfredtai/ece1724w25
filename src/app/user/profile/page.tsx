@@ -1,4 +1,4 @@
-"use client";
+"use client"; // This is a client component that uses React hooks
 
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";

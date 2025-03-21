@@ -16,6 +16,7 @@ import {
 import { ChevronDown, BadgeInfo, Upload, X } from "lucide-react";
 import { videoApi, VideoGenerationParams } from "@/lib/api";
 import VideoGenerationStatus from "@/components/videoGenerationStatus";
+import Image from "next/image";
 
 // Extended interface for image-to-video parameters
 interface ImageToVideoParams extends VideoGenerationParams {
@@ -278,10 +279,12 @@ const ImageToVideoPage: React.FC = () => {
               <div className="border border-border/50 rounded-lg p-4 bg-background/50">
                 {startImagePreview ? (
                   <div className="relative">
-                    <img
+                    <Image
                       src={startImagePreview}
                       alt="Start frame"
                       className="w-full h-auto rounded-md object-cover max-h-[200px]"
+                      width={400}
+                      height={200}
                     />
                     <Button
                       size="sm"
@@ -337,10 +340,12 @@ const ImageToVideoPage: React.FC = () => {
                 <div className="border border-border/50 rounded-lg p-4 bg-background/50">
                   {endImagePreview ? (
                     <div className="relative">
-                      <img
+                      <Image
                         src={endImagePreview}
                         alt="End frame"
                         className="w-full h-auto rounded-md object-cover max-h-[200px]"
+                        width={400}
+                        height={200}
                       />
                       <Button
                         size="sm"

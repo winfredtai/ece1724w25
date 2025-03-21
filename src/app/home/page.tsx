@@ -15,6 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 // Types
 interface CarouselItem {
@@ -537,10 +538,12 @@ const HomePage: React.FC = () => {
               <Card className="max-w-4xl mx-auto overflow-hidden border border-border/30 shadow-lg bg-background/20 backdrop-blur-sm">
                 <div className="md:flex">
                   <div className="md:w-1/2 relative overflow-hidden">
-                    <img
+                    <Image
                       src={aiEffectImages[currentEffectIndex].image}
                       alt={aiEffectImages[currentEffectIndex].title}
                       className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                      width={600}
+                      height={400}
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent"></div>
                     <Badge className="absolute top-4 left-4 bg-blue-600/80 text-white border-0 backdrop-blur-sm">
@@ -605,10 +608,12 @@ const HomePage: React.FC = () => {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <img
+                          <Image
                             src={effect.image}
                             alt={effect.title}
                             className="w-full h-full object-cover"
+                            width={120}
+                            height={90}
                           />
                         </TooltipTrigger>
                         <TooltipContent>
@@ -772,10 +777,12 @@ const HomePage: React.FC = () => {
                       className="overflow-hidden border border-border/30 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group bg-background/20 backdrop-blur-sm"
                     >
                       <div className="h-36 overflow-hidden relative">
-                        <img
+                        <Image
                           src={subcat.image}
                           alt={subcat.title}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          width={300}
+                          height={144}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       </div>

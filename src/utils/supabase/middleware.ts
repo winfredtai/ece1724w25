@@ -32,8 +32,9 @@ export async function updateSession(request: NextRequest) {
 
     // 检查认证状态但不记录日志
     await supabase.auth.getUser();
-  } catch (err) {
+  } catch (error) {
     // 错误处理但不记录日志
+    console.error('认证状态检查失败:', error);
   }
 
   return supabaseResponse;

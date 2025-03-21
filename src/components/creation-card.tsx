@@ -32,6 +32,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import Image from "next/image";
 
 interface Creation {
   id: string;
@@ -243,10 +244,12 @@ export const CreationCard: React.FC<CreationCardProps> = ({
                 className="w-full rounded-md"
               ></video>
             ) : (
-              <img
+              <Image
                 src={creation.url}
                 alt={creation.title}
                 className="w-full rounded-md"
+                width={500}
+                height={300}
               />
             )}
           </div>

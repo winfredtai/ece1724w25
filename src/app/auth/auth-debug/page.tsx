@@ -3,10 +3,10 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
-export default function AuthDebug() {
-  const router = useRouter();
+// 创建一个新组件来处理参数相关的逻辑
+function DebugContent() {
   const searchParams = useSearchParams();
   const [errorDetails, setErrorDetails] = useState<string>("");
 
@@ -21,6 +21,28 @@ export default function AuthDebug() {
   }, [searchParams]);
 
   return (
+    <div className="bg-black/10 p-4 rounded-md overflow-auto text-left">
+      <pre className="text-sm">{errorDetails || "无参数信息"}</pre>
+    </div>
+  );
+}
+
+// 加载状态组件
+function LoadingState() {
+  return (
+    <div className="bg-black/10 p-4 rounded-md overflow-auto text-left">
+      <div className="animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      </div>
+    </div>
+  );
+}
+
+export default function AuthDebug() {
+  const router = useRouter();
+
+  return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
       <div className="w-full max-w-2xl space-y-6">
         <div className="space-y-2">
@@ -33,9 +55,9 @@ export default function AuthDebug() {
           </p>
         </div>
         
-        <div className="bg-black/10 p-4 rounded-md overflow-auto text-left">
-          <pre className="text-sm">{errorDetails || "无参数信息"}</pre>
-        </div>
+        <Suspense fallback={<LoadingState />}>
+          <DebugContent />
+        </Suspense>
         
         <div className="flex flex-col gap-2">
           <Button onClick={() => router.push("/")}>

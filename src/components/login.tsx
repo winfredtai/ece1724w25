@@ -11,7 +11,6 @@ import {
   Separator,
 } from "@/components/ui";
 import { Eye, EyeOff, Mail, Lock, AlertCircle, X } from "lucide-react";
-import { useGoogleLogin } from "@react-oauth/google";
 import { createClient } from "@/utils/supabase/client";
 
 interface LoginProps {
@@ -62,7 +61,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
       // 指定重定向URL，确保正确处理回调
       const redirectUrl = `${window.location.origin}/auth/callback`;
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,

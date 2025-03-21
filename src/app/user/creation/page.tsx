@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { User } from '@supabase/supabase-js';
 import {
   Input,
   Button,
@@ -45,6 +44,7 @@ import {
   Filter,
   X,
 } from "lucide-react";
+import Image from "next/image";
 
 // Types for creations
 interface UserCreation {
@@ -63,7 +63,6 @@ const MyCreationsPage = () => {
   const router = useRouter();
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(true);
-  const [supaUser, setSupaUser] = useState<User | null>(null);
 
   // Creation states
   const [creations, setCreations] = useState<UserCreation[]>([]);
@@ -88,6 +87,131 @@ const MyCreationsPage = () => {
   // Sorting
   const [sortOption, setSortOption] = useState("newest");
 
+  // 获取用户创作
+  const fetchUserCreations = async () => {
+    try {
+      // 在真实应用中，这里应该是一个API调用
+      // 这里使用模拟数据
+      const mockData: UserCreation[] = [
+        {
+          id: "1",
+          type: "video",
+          title: "太空中飞行的宇航员",
+          description: "一个宇航员在星空中漫游，周围是壮丽的星云和行星",
+          thumbnailUrl: "/images/creations/space.jpg",
+          url: "https://example.com/video1.mp4",
+          createdAt: "2023-04-15T10:30:00Z",
+          status: "completed",
+          starred: true,
+        },
+        {
+          id: "2",
+          type: "video",
+          title: "海底世界探索",
+          description: "深海的神秘生物和珊瑚礁，色彩斑斓的鱼群穿梭其中",
+          thumbnailUrl: "/images/creations/underwater.jpg",
+          url: "https://example.com/video2.mp4",
+          createdAt: "2023-04-10T14:20:00Z",
+          status: "completed",
+          starred: false,
+        },
+        {
+          id: "3",
+          type: "image",
+          title: "未来城市全景",
+          description: "2150年的未来城市，高楼林立，飞行汽车穿梭其中",
+          thumbnailUrl: "/images/creations/future-city.jpg",
+          url: "https://example.com/image1.jpg",
+          createdAt: "2023-04-05T09:15:00Z",
+          status: "completed",
+          starred: false,
+        },
+        {
+          id: "4",
+          type: "video",
+          title: "正在生成中...",
+          description: "森林中的神秘小屋，周围是雾气缭绕的古树",
+          thumbnailUrl: "/images/creations/forest.jpg",
+          url: "",
+          createdAt: "2023-04-20T16:45:00Z",
+          status: "processing",
+          starred: false,
+        },
+        {
+          id: "5",
+          type: "video",
+          title: "沙漠中的绿洲",
+          description: "一片神秘的绿洲出现在广阔沙漠中，棕榈树环绕着清澈的湖泊",
+          thumbnailUrl: "/images/creations/oasis.jpg",
+          url: "https://example.com/video3.mp4",
+          createdAt: "2023-03-28T11:20:00Z",
+          status: "completed",
+          starred: true,
+        },
+        {
+          id: "6",
+          type: "image",
+          title: "北极光下的森林",
+          description: "茂密的针叶林在北极光的照耀下，呈现出梦幻般的景象",
+          thumbnailUrl: "/images/creations/aurora.jpg",
+          url: "https://example.com/image2.jpg",
+          createdAt: "2023-03-15T20:45:00Z",
+          status: "completed",
+          starred: false,
+        },
+        {
+          id: "7",
+          type: "video",
+          title: "生成失败",
+          description: "尝试生成的山峰视频，遇到了技术问题",
+          thumbnailUrl: "/images/creations/mountains.jpg",
+          url: "",
+          createdAt: "2023-03-10T09:30:00Z",
+          status: "failed",
+          starred: false,
+        },
+        {
+          id: "8",
+          type: "image",
+          title: "古代建筑",
+          description: "历史悠久的古代建筑，石柱和拱门展示着精湛的工艺",
+          thumbnailUrl: "/images/creations/ancient.jpg",
+          url: "https://example.com/image3.jpg",
+          createdAt: "2023-02-28T14:10:00Z",
+          status: "completed",
+          starred: false,
+        },
+        {
+          id: "9",
+          type: "video",
+          title: "城市夜景",
+          description: "繁华城市的夜景，霓虹灯和车流构成动态的光影画面",
+          thumbnailUrl: "/images/creations/city-night.jpg",
+          url: "https://example.com/video4.mp4",
+          createdAt: "2023-02-20T19:25:00Z",
+          status: "completed",
+          starred: false,
+        },
+        {
+          id: "10",
+          type: "image",
+          title: "热带雨林",
+          description: "茂密的热带雨林，阳光透过树叶形成斑驳的光影",
+          thumbnailUrl: "/images/creations/rainforest.jpg",
+          url: "https://example.com/image4.jpg",
+          createdAt: "2023-02-15T11:50:00Z",
+          status: "completed",
+          starred: true,
+        },
+      ];
+      
+      setCreations(mockData);
+      setFilteredCreations(mockData);
+    } catch (error) {
+      console.error("获取用户创作失败:", error);
+    }
+  };
+
   // 检查 Supabase 认证状态
   useEffect(() => {
     const checkSupabaseAuth = async () => {
@@ -107,7 +231,8 @@ const MyCreationsPage = () => {
           }
           
           if (userData.user) {
-            setSupaUser(userData.user);
+            // 用户已登录，获取用户创作
+            fetchUserCreations();
           } else {
             router.push("/login");
           }
@@ -124,125 +249,6 @@ const MyCreationsPage = () => {
     
     checkSupabaseAuth();
   }, [router, supabase]);
-
-  // Load mock data
-  useEffect(() => {
-    // In a real application, this would be an API call
-    const mockData: UserCreation[] = [
-      {
-        id: "1",
-        type: "video",
-        title: "太空中飞行的宇航员",
-        description: "一个宇航员在星空中漫游，周围是壮丽的星云和行星",
-        thumbnailUrl: "/images/creations/space.jpg",
-        url: "https://example.com/video1.mp4",
-        createdAt: "2023-04-15T10:30:00Z",
-        status: "completed",
-        starred: true,
-      },
-      {
-        id: "2",
-        type: "video",
-        title: "海底世界探索",
-        description: "深海的神秘生物和珊瑚礁，色彩斑斓的鱼群穿梭其中",
-        thumbnailUrl: "/images/creations/underwater.jpg",
-        url: "https://example.com/video2.mp4",
-        createdAt: "2023-04-10T14:20:00Z",
-        status: "completed",
-        starred: false,
-      },
-      {
-        id: "3",
-        type: "image",
-        title: "未来城市全景",
-        description: "2150年的未来城市，高楼林立，飞行汽车穿梭其中",
-        thumbnailUrl: "/images/creations/future-city.jpg",
-        url: "https://example.com/image1.jpg",
-        createdAt: "2023-04-05T09:15:00Z",
-        status: "completed",
-        starred: false,
-      },
-      {
-        id: "4",
-        type: "video",
-        title: "正在生成中...",
-        description: "森林中的神秘小屋，周围是雾气缭绕的古树",
-        thumbnailUrl: "/images/creations/forest.jpg",
-        url: "",
-        createdAt: "2023-04-20T16:45:00Z",
-        status: "processing",
-        starred: false,
-      },
-      {
-        id: "5",
-        type: "video",
-        title: "沙漠中的绿洲",
-        description: "一片神秘的绿洲出现在广阔沙漠中，棕榈树环绕着清澈的湖泊",
-        thumbnailUrl: "/images/creations/oasis.jpg",
-        url: "https://example.com/video3.mp4",
-        createdAt: "2023-03-28T11:20:00Z",
-        status: "completed",
-        starred: true,
-      },
-      {
-        id: "6",
-        type: "image",
-        title: "北极光下的森林",
-        description: "茂密的针叶林在北极光的照耀下，呈现出梦幻般的景象",
-        thumbnailUrl: "/images/creations/aurora.jpg",
-        url: "https://example.com/image2.jpg",
-        createdAt: "2023-03-15T20:45:00Z",
-        status: "completed",
-        starred: false,
-      },
-      {
-        id: "7",
-        type: "video",
-        title: "生成失败",
-        description: "尝试生成的山峰视频，遇到了技术问题",
-        thumbnailUrl: "/images/creations/mountains.jpg",
-        url: "",
-        createdAt: "2023-03-10T09:30:00Z",
-        status: "failed",
-        starred: false,
-      },
-      {
-        id: "8",
-        type: "image",
-        title: "古代建筑",
-        description: "历史悠久的古代建筑，石柱和拱门展示着精湛的工艺",
-        thumbnailUrl: "/images/creations/ancient.jpg",
-        url: "https://example.com/image3.jpg",
-        createdAt: "2023-02-28T14:10:00Z",
-        status: "completed",
-        starred: false,
-      },
-      {
-        id: "9",
-        type: "video",
-        title: "城市夜景",
-        description: "繁华城市的夜景，霓虹灯和车流构成动态的光影画面",
-        thumbnailUrl: "/images/creations/city-night.jpg",
-        url: "https://example.com/video4.mp4",
-        createdAt: "2023-02-20T19:25:00Z",
-        status: "completed",
-        starred: false,
-      },
-      {
-        id: "10",
-        type: "image",
-        title: "热带雨林",
-        description: "茂密的热带雨林，阳光透过树叶形成斑驳的光影",
-        thumbnailUrl: "/images/creations/rainforest.jpg",
-        url: "https://example.com/image4.jpg",
-        createdAt: "2023-02-15T11:50:00Z",
-        status: "completed",
-        starred: true,
-      },
-    ];
-
-    setCreations(mockData);
-  }, []);
 
   // Apply search filter and sorting
   useEffect(() => {
@@ -433,10 +439,12 @@ const MyCreationsPage = () => {
                   {getPaginatedCreations(tab).map((creation) => (
                     <Card key={creation.id} className="overflow-hidden">
                       <div className="relative aspect-video">
-                        <img
+                        <Image
                           src={creation.thumbnailUrl}
                           alt={creation.title}
                           className="h-full w-full object-cover"
+                          width={400}
+                          height={225}
                         />
                         <div className="absolute bottom-2 right-2 flex space-x-1">
                           {creation.status === "processing" && (
@@ -595,7 +603,7 @@ const MyCreationsPage = () => {
           </DialogHeader>
           <div className="py-4">
             您确定要删除
-            <span className="font-medium"> "{selectedCreation?.title}" </span>吗？
+            <span className="font-medium"> &ldquo;{selectedCreation?.title}&rdquo; </span>吗？
             此操作无法撤消。
           </div>
           <DialogFooter>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { User } from "@supabase/supabase-js";
 import {
   Input,
   Button,
@@ -77,8 +78,7 @@ const ProfilePage: React.FC = () => {
   const router = useRouter();
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [supaUser, setSupaUser] = useState<any>(null);
+  const [supaUser, setSupaUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [profileForm, setProfileForm] = useState({
     name: "",
@@ -176,7 +176,7 @@ const ProfilePage: React.FC = () => {
         }
         
         if (data.session) {
-          setIsAuthenticated(true);
+          setSupaUser(data.session.user);
           
           // 获取用户信息
           const { data: userData, error: userError } = await supabase.auth.getUser();

@@ -1,4 +1,4 @@
-// src/components/login.tsx
+"use client";
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -11,7 +11,7 @@ import {
   Separator,
 } from "@/components/ui";
 import { Eye, EyeOff, Mail, Lock, AlertCircle, X } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/components/authProvider";
 
 interface LoginProps {
   onClose?: () => void;
@@ -24,7 +24,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const supabase = createClient();
+  const { login, loginWithGoogle } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,17 +32,14 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
     setIsLoading(true);
 
     try {
-      // 使用 Supabase 登录
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // 使用 AuthProvider 的 login 函数登录
+      const { error } = await login(email, password);
 
       if (error) throw error;
-      
+
       // 设置登录成功标记，帮助其他组件检测登录状态变化
       document.cookie = "auth_success=true; path=/;";
-      
+
       if (onClose) onClose(); // Close the modal after successful login
     } catch (err) {
       setError("登录失败。请检查您的凭据并重试。");
@@ -52,36 +49,25 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
     }
   };
 
-  // 处理 Supabase Google OAuth 登录
-  const handleSupabaseGoogleLogin = async () => {
+  // 处理 Google OAuth 登录
+  const handleGoogleLogin = async () => {
     try {
       setError(null);
       setIsLoading(true);
-      
-      // 指定重定向URL，确保正确处理回调
-      const redirectUrl = `${window.location.origin}/auth/callback`;
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
-      });
-      
+
+      const { error } = await loginWithGoogle();
+
       if (error) {
         throw error;
       }
-      
-      // Supabase会自动重定向到Google授权页面
+
+      // loginWithGoogle 会自动重定向到Google授权页面
     } catch (error) {
-      const errorMessage = error instanceof Error
-        ? `Google 登录失败: ${error.message}`
-        : "Google 登录失败，请重试。";
-      
+      const errorMessage =
+        error instanceof Error
+          ? `Google 登录失败: ${error.message}`
+          : "Google 登录失败，请重试。";
+
       setError(errorMessage);
       setIsLoading(false);
     }
@@ -138,7 +124,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
             variant="outline"
             type="button"
             className="w-full flex items-center justify-center gap-2 border-border hover:bg-accent transition-colors"
-            onClick={handleSupabaseGoogleLogin}
+            onClick={handleGoogleLogin}
             disabled={isLoading}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -217,11 +203,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Loading..." : "登录"}
             </Button>
           </form>

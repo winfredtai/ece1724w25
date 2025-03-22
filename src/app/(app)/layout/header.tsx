@@ -9,8 +9,7 @@ import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Login from "@/components/login";
-import { createClient } from "@/utils/supabase/client";
-import { User } from '@supabase/supabase-js';
+import { useAuth } from "@/components/authProvider";
 
 interface AppHeaderProps extends React.HTMLAttributes<HTMLElement> {
   className?: string;
@@ -23,80 +22,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
-  // Supabase 状态
-  const [supaUser, setSupaUser] = useState<User | null>(null);
-  const [isSupaAuthenticated, setIsSupaAuthenticated] = useState(false);
-  const supabase = createClient();
 
-  // 获取 Supabase 用户信息
-  useEffect(() => {
-    const checkSupabaseAuth = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          return;
-        }
-        
-        if (data.session) {
-          setIsSupaAuthenticated(true);
-          
-          // 获取用户信息
-          const { data: userData, error: userError } = await supabase.auth.getUser();
-          if (userError) {
-            return;
-          }
-          
-          if (userData.user) {
-            setSupaUser(userData.user);
-          }
-        } else {
-          setIsSupaAuthenticated(false);
-          setSupaUser(null);
-        }
-      } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
-        // 错误处理，但不使用错误对象
-      }
-    };
-    
-    // 立即检查一次
-    checkSupabaseAuth();
-    
-    // 检查cookie是否有登录标记
-    const checkAuthCookie = () => {
-      const cookies = document.cookie.split(';');
-      const authSuccess = cookies.find(cookie => cookie.trim().startsWith('auth_success='));
-      
-      if (authSuccess) {
-        checkSupabaseAuth();
-        // 清除cookie以防止重复刷新
-        document.cookie = "auth_success=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      }
-    };
-    
-    // 页面加载时检查cookie
-    checkAuthCookie();
-    
-    // 添加定时器每10秒检查一次cookie，以捕获重定向后的登录状态
-    const cookieInterval = setInterval(checkAuthCookie, 10000);
-    
-    // 监听认证状态变化
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        setIsSupaAuthenticated(true);
-        setSupaUser(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        setIsSupaAuthenticated(false);
-        setSupaUser(null);
-      }
-    });
-    
-    return () => {
-      authListener.subscription.unsubscribe();
-      clearInterval(cookieInterval);
-    };
-  }, [supabase.auth]);
+  // Use the auth provider
+  const { user, isAuthenticated, logout, getAvatarUrl, getUserInitials } =
+    useAuth();
 
   const toggleDropdown = () => {
     setDropdownOpen(!dropdownOpen);
@@ -119,41 +48,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       };
     }
   }, [dropdownOpen]);
-  
-  // 处理 Supabase 登出
-  const handleSupaLogout = async () => {
-    await supabase.auth.signOut();
+
+  // 处理登出
+  const handleLogout = async () => {
+    await logout();
     setDropdownOpen(false);
   };
 
-  // 获取用户展示信息
-  const getUserInitials = () => {
-    if (supaUser?.user_metadata?.full_name) {
-      const nameParts = supaUser.user_metadata.full_name.split(' ');
-      if (nameParts.length >= 2) {
-        return (nameParts[0][0] + nameParts[1][0]).toUpperCase();
-      }
-      return supaUser.user_metadata.full_name.substring(0, 2).toUpperCase();
-    }
-    
-    if (supaUser?.email) {
-      return supaUser.email.substring(0, 2).toUpperCase();
-    }
-    
-    return "?";
-  };
-  
-  const getAvatarUrl = () => {
-    if (supaUser?.user_metadata?.avatar_url) {
-      return supaUser.user_metadata.avatar_url;
-    }
-    
-    if (supaUser?.user_metadata?.picture) {
-      return supaUser.user_metadata.picture;
-    }
-    
-    return "";
-  };
+  // User display functions are now provided by the auth provider
 
   return (
     <header
@@ -186,7 +88,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </Link>
           </Button>
 
-          {!isSupaAuthenticated && (
+          {!isAuthenticated && (
             <Button
               className="bg-gradient-to-r from-primary to-blue-600 hover:opacity-90 shadow-md transition-all cursor-pointer"
               onClick={() => setShowLogin(true)}
@@ -208,16 +110,26 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
             {dropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-50 bg-background">
-                {isSupaAuthenticated ? (
+                {isAuthenticated ? (
                   <>
-                    <Link href="/user/profile" className="block px-4 py-2 text-sm">
+                    <div className="px-4 py-2 text-sm text-gray-500 truncate">
+                      {user?.email}
+                    </div>
+                    <hr className="my-1" />
+                    <Link
+                      href="/user/profile"
+                      className="block px-4 py-2 text-sm"
+                    >
                       个人中心
                     </Link>
-                    <Link href="/user/creation" className="block px-4 py-2 text-sm">
+                    <Link
+                      href="/user/creation"
+                      className="block px-4 py-2 text-sm"
+                    >
                       我的创作
                     </Link>
                     <div
-                      onClick={handleSupaLogout}
+                      onClick={handleLogout}
                       className="block px-4 py-2 text-sm cursor-pointer"
                     >
                       退出登录

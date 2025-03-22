@@ -35,7 +35,7 @@ export default function AuthCodeError() {
             登录过程中出现了问题。可能是链接已过期或无效。
           </p>
         </div>
-        
+
         <div className="flex flex-col gap-2">
           <Button onClick={() => router.push("/")}>
             返回首页 ({countdown})
@@ -47,4 +47,4 @@ export default function AuthCodeError() {
       </div>
     </div>
   );
-} 
+}

@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui";
 import { createClient } from "@/utils/supabase/client";
 
 export default function LoginTest() {
@@ -15,14 +21,14 @@ export default function LoginTest() {
     setLoading(true);
     setError(null);
     setResult(null);
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
       });
-      
+
       if (error) throw error;
-      
+
       setResult(JSON.stringify(data, null, 2));
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败");
@@ -36,15 +42,15 @@ export default function LoginTest() {
     setLoading(true);
     setError(null);
     setResult(null);
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'test@example.com',
-        password: 'password123',
+        email: "test@example.com",
+        password: "password123",
       });
-      
+
       if (error) throw error;
-      
+
       setResult(JSON.stringify(data, null, 2));
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败");
@@ -58,12 +64,12 @@ export default function LoginTest() {
     setLoading(true);
     setError(null);
     setResult(null);
-    
+
     try {
       const { data, error } = await supabase.auth.getSession();
-      
+
       if (error) throw error;
-      
+
       setResult(JSON.stringify(data, null, 2));
     } catch (err) {
       setError(err instanceof Error ? err.message : "获取会话失败");
@@ -86,23 +92,31 @@ export default function LoginTest() {
               {error}
             </div>
           )}
-          
+
           {result && (
             <div className="p-3 bg-green-100 border border-green-200 rounded-lg">
               <pre className="text-xs overflow-auto max-h-60">{result}</pre>
             </div>
           )}
-          
+
           <div className="flex flex-col gap-2">
             <Button onClick={handleGoogleLogin} disabled={loading}>
               Google登录测试
             </Button>
-            
-            <Button onClick={handleEmailLogin} disabled={loading} variant="outline">
+
+            <Button
+              onClick={handleEmailLogin}
+              disabled={loading}
+              variant="outline"
+            >
               邮箱密码登录测试
             </Button>
-            
-            <Button onClick={checkSession} disabled={loading} variant="secondary">
+
+            <Button
+              onClick={checkSession}
+              disabled={loading}
+              variant="secondary"
+            >
               检查当前会话
             </Button>
           </div>
@@ -110,4 +124,4 @@ export default function LoginTest() {
       </Card>
     </div>
   );
-} 
+}

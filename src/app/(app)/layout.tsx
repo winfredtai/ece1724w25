@@ -1,33 +1,17 @@
-// src/app/layout/layout.tsx
 "use client";
 
 import React from "react";
-import { Geist, Geist_Mono } from "next/font/google";
-import "../globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-import { AppSidebar } from "./sidebar";
-import { AppHeader } from "./header";
+import { AppSidebar } from "./layout/sidebar";
+import { AppHeader } from "./layout/header";
 import { useEffect, useState } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { ThemeProvider } from "@/components/themeProvider";
-import { GoogleOAuthProvider } from "@react-oauth/google";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const Layout = ({ children }: LayoutProps) => {
+export default function Layout({ children }: LayoutProps) {
   const [scrolled, setScrolled] = useState(false);
 
   // 添加滚动效果检测
@@ -53,32 +37,11 @@ const Layout = ({ children }: LayoutProps) => {
           <AppSidebar className="left-0 top-[74px] h-[calc(100vh-74px)] backdrop-blur-sm z-20" />
           <SidebarInset className="top-[74px] pt-4 w-full">
             <div className="transition-all duration-300 animate-in fade-in slide-in-from-bottom-5">
-              {/* <SidebarTrigger /> */}
               {children}
             </div>
           </SidebarInset>
         </SidebarProvider>
       </div>
     </div>
-  );
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <ThemeProvider>
-          <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
-            <Layout>{children}</Layout>
-          </GoogleOAuthProvider>
-        </ThemeProvider>
-      </body>
-    </html>
   );
 }

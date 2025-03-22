@@ -16,7 +16,7 @@ function DebugContent() {
     searchParams.forEach((value, key) => {
       params[key] = value;
     });
-    
+
     setErrorDetails(JSON.stringify(params, null, 2));
   }, [searchParams]);
 
@@ -54,15 +54,13 @@ export default function AuthDebug() {
             以下是认证过程中的参数信息，可用于调试问题。
           </p>
         </div>
-        
+
         <Suspense fallback={<LoadingState />}>
           <DebugContent />
         </Suspense>
-        
+
         <div className="flex flex-col gap-2">
-          <Button onClick={() => router.push("/")}>
-            返回首页
-          </Button>
+          <Button onClick={() => router.push("/")}>返回首页</Button>
           <Button variant="outline" onClick={() => router.back()}>
             返回上一页
           </Button>
@@ -70,4 +68,4 @@ export default function AuthDebug() {
       </div>
     </div>
   );
-} 
+}

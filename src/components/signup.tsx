@@ -46,9 +46,9 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
-      
+
       if (error) throw error;
-      
+
       setEmailSent(true);
     } catch (err) {
       setError("注册失败。请检查您的电子邮件地址并重试。");
@@ -63,31 +63,32 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
     try {
       setError(null);
       setIsLoading(true);
-      
+
       // 指定重定向URL，确保正确处理回调
       const redirectUrl = `${window.location.origin}/auth/callback`;
-      
+
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
           redirectTo: redirectUrl,
           queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+            access_type: "offline",
+            prompt: "consent",
           },
         },
       });
-      
+
       if (error) {
         throw error;
       }
-      
+
       // Supabase会自动重定向到Google授权页面
     } catch (error) {
-      const errorMessage = error instanceof Error
-        ? `Google 注册失败: ${error.message}`
-        : "Google 注册失败，请重试。";
-      
+      const errorMessage =
+        error instanceof Error
+          ? `Google 注册失败: ${error.message}`
+          : "Google 注册失败，请重试。";
+
       setError(errorMessage);
       setIsLoading(false);
     }
@@ -146,9 +147,7 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
               </svg>
-              <span>
-                验证邮件已发送！请检查您的收件箱完成注册。
-              </span>
+              <span>验证邮件已发送！请检查您的收件箱完成注册。</span>
             </div>
           )}
 

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/components/authProvider";
 import {
   Input,
   Button,
@@ -62,6 +63,7 @@ interface UserCreation {
 const MyCreationsPage = () => {
   const router = useRouter();
   const supabase = createClient();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
 
   // Creation states
@@ -87,168 +89,32 @@ const MyCreationsPage = () => {
   // Sorting
   const [sortOption, setSortOption] = useState("newest");
 
-  // 获取用户创作
-  const fetchUserCreations = async () => {
-    try {
-      // 在真实应用中，这里应该是一个API调用
-      // 这里使用模拟数据
-      const mockData: UserCreation[] = [
-        {
-          id: "1",
-          type: "video",
-          title: "太空中飞行的宇航员",
-          description: "一个宇航员在星空中漫游，周围是壮丽的星云和行星",
-          thumbnailUrl: "/images/creations/space.jpg",
-          url: "https://example.com/video1.mp4",
-          createdAt: "2023-04-15T10:30:00Z",
-          status: "completed",
-          starred: true,
-        },
-        {
-          id: "2",
-          type: "video",
-          title: "海底世界探索",
-          description: "深海的神秘生物和珊瑚礁，色彩斑斓的鱼群穿梭其中",
-          thumbnailUrl: "/images/creations/underwater.jpg",
-          url: "https://example.com/video2.mp4",
-          createdAt: "2023-04-10T14:20:00Z",
-          status: "completed",
-          starred: false,
-        },
-        {
-          id: "3",
-          type: "image",
-          title: "未来城市全景",
-          description: "2150年的未来城市，高楼林立，飞行汽车穿梭其中",
-          thumbnailUrl: "/images/creations/future-city.jpg",
-          url: "https://example.com/image1.jpg",
-          createdAt: "2023-04-05T09:15:00Z",
-          status: "completed",
-          starred: false,
-        },
-        {
-          id: "4",
-          type: "video",
-          title: "正在生成中...",
-          description: "森林中的神秘小屋，周围是雾气缭绕的古树",
-          thumbnailUrl: "/images/creations/forest.jpg",
-          url: "",
-          createdAt: "2023-04-20T16:45:00Z",
-          status: "processing",
-          starred: false,
-        },
-        {
-          id: "5",
-          type: "video",
-          title: "沙漠中的绿洲",
-          description: "一片神秘的绿洲出现在广阔沙漠中，棕榈树环绕着清澈的湖泊",
-          thumbnailUrl: "/images/creations/oasis.jpg",
-          url: "https://example.com/video3.mp4",
-          createdAt: "2023-03-28T11:20:00Z",
-          status: "completed",
-          starred: true,
-        },
-        {
-          id: "6",
-          type: "image",
-          title: "北极光下的森林",
-          description: "茂密的针叶林在北极光的照耀下，呈现出梦幻般的景象",
-          thumbnailUrl: "/images/creations/aurora.jpg",
-          url: "https://example.com/image2.jpg",
-          createdAt: "2023-03-15T20:45:00Z",
-          status: "completed",
-          starred: false,
-        },
-        {
-          id: "7",
-          type: "video",
-          title: "生成失败",
-          description: "尝试生成的山峰视频，遇到了技术问题",
-          thumbnailUrl: "/images/creations/mountains.jpg",
-          url: "",
-          createdAt: "2023-03-10T09:30:00Z",
-          status: "failed",
-          starred: false,
-        },
-        {
-          id: "8",
-          type: "image",
-          title: "古代建筑",
-          description: "历史悠久的古代建筑，石柱和拱门展示着精湛的工艺",
-          thumbnailUrl: "/images/creations/ancient.jpg",
-          url: "https://example.com/image3.jpg",
-          createdAt: "2023-02-28T14:10:00Z",
-          status: "completed",
-          starred: false,
-        },
-        {
-          id: "9",
-          type: "video",
-          title: "城市夜景",
-          description: "繁华城市的夜景，霓虹灯和车流构成动态的光影画面",
-          thumbnailUrl: "/images/creations/city-night.jpg",
-          url: "https://example.com/video4.mp4",
-          createdAt: "2023-02-20T19:25:00Z",
-          status: "completed",
-          starred: false,
-        },
-        {
-          id: "10",
-          type: "image",
-          title: "热带雨林",
-          description: "茂密的热带雨林，阳光透过树叶形成斑驳的光影",
-          thumbnailUrl: "/images/creations/rainforest.jpg",
-          url: "https://example.com/image4.jpg",
-          createdAt: "2023-02-15T11:50:00Z",
-          status: "completed",
-          starred: true,
-        },
-      ];
-      
-      setCreations(mockData);
-      setFilteredCreations(mockData);
-    } catch (error) {
-      console.error("获取用户创作失败:", error);
-    }
-  };
-
-  // 检查 Supabase 认证状态
+  // Check authentication and fetch user creations
   useEffect(() => {
-    const checkSupabaseAuth = async () => {
+    const checkAuthAndFetchData = async () => {
       try {
         setIsLoading(true);
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          throw error;
-        }
-        
-        if (data.session) {
-          // 获取用户信息
-          const { data: userData, error: userError } = await supabase.auth.getUser();
-          if (userError) {
-            throw userError;
-          }
-          
-          if (userData.user) {
-            // 用户已登录，获取用户创作
-            fetchUserCreations();
-          } else {
-            router.push("/login");
-          }
-        } else {
+
+        if (isAuthenticated) {
+          // User is authenticated, fetch user creations
+          const response = await fetch("/user/fetch-creation");
+          const { creations } = await response.json();
+          setCreations(creations);
+          setFilteredCreations(creations);
+        } else if (!authLoading) {
+          // Redirect only when authentication status is loaded and user is not authenticated
           router.push("/login");
         }
       } catch (err) {
-        console.error("检查认证状态时出错:", err);
+        console.error("Error checking auth or fetching creations:", err);
         router.push("/login");
       } finally {
         setIsLoading(false);
       }
     };
-    
-    checkSupabaseAuth();
-  }, [router, supabase]);
+
+    checkAuthAndFetchData();
+  }, [isAuthenticated, authLoading, router]);
 
   // Apply search filter and sorting
   useEffect(() => {
@@ -311,25 +177,71 @@ const MyCreationsPage = () => {
     setRenameDialogOpen(true);
   };
 
-  const handleConfirmRename = () => {
+  const handleConfirmRename = async () => {
     if (selectedCreation && newTitle.trim()) {
-      setCreations((prevCreations) =>
-        prevCreations.map((creation) =>
-          creation.id === selectedCreation.id
-            ? { ...creation, title: newTitle.trim() }
-            : creation,
-        ),
-      );
-      setRenameDialogOpen(false);
+      try {
+        const taskId = parseInt(selectedCreation.id);
+
+        // 更新任务定义中的prompt字段作为新标题
+        const { error } = await supabase
+          .from("video_generation_task_definitions")
+          .update({ prompt: newTitle.trim() })
+          .eq("id", taskId);
+
+        if (error) throw error;
+
+        // 更新本地状态
+        setCreations((prevCreations) =>
+          prevCreations.map((creation) =>
+            creation.id === selectedCreation.id
+              ? { ...creation, title: newTitle.trim() }
+              : creation,
+          ),
+        );
+
+        setRenameDialogOpen(false);
+      } catch (error) {
+        console.error("重命名创作失败:", error);
+        alert("重命名创作失败，请稍后再试");
+      }
     }
   };
 
-  const handleToggleStar = (creation: UserCreation) => {
-    setCreations((prevCreations) =>
-      prevCreations.map((c) =>
-        c.id === creation.id ? { ...c, starred: !c.starred } : c,
-      ),
-    );
+  const handleToggleStar = async (creation: UserCreation) => {
+    try {
+      if (!user) return;
+
+      const userId = user.id;
+      const taskId = parseInt(creation.id);
+
+      if (creation.starred) {
+        // 如果已收藏，则取消收藏
+        const { error } = await supabase
+          .from("user_favorites")
+          .delete()
+          .eq("user_id", userId)
+          .eq("task_id", taskId);
+
+        if (error) throw error;
+      } else {
+        // 如果未收藏，则添加收藏
+        const { error } = await supabase.from("user_favorites").insert({
+          user_id: userId,
+          task_id: taskId,
+        });
+
+        if (error) throw error;
+      }
+
+      // 更新本地状态
+      setCreations((prevCreations) =>
+        prevCreations.map((c) =>
+          c.id === creation.id ? { ...c, starred: !c.starred } : c,
+        ),
+      );
+    } catch (error) {
+      console.error("切换收藏状态失败:", error);
+    }
   };
 
   const handleDelete = (creation: UserCreation) => {
@@ -337,12 +249,47 @@ const MyCreationsPage = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedCreation) {
-      setCreations((prevCreations) =>
-        prevCreations.filter((creation) => creation.id !== selectedCreation.id),
-      );
-      setDeleteDialogOpen(false);
+      try {
+        const taskId = parseInt(selectedCreation.id);
+
+        // 删除任务状态
+        const { error: statusError } = await supabase
+          .from("video_generation_task_statuses")
+          .delete()
+          .eq("task_id", taskId);
+
+        if (statusError) throw statusError;
+
+        // 删除收藏记录
+        const { error: favError } = await supabase
+          .from("user_favorites")
+          .delete()
+          .eq("task_id", taskId);
+
+        if (favError) throw favError;
+
+        // 删除任务定义
+        const { error: taskError } = await supabase
+          .from("video_generation_task_definitions")
+          .delete()
+          .eq("id", taskId);
+
+        if (taskError) throw taskError;
+
+        // 更新本地状态
+        setCreations((prevCreations) =>
+          prevCreations.filter(
+            (creation) => creation.id !== selectedCreation.id,
+          ),
+        );
+
+        setDeleteDialogOpen(false);
+      } catch (error) {
+        console.error("删除创作失败:", error);
+        alert("删除创作失败，请稍后再试");
+      }
     }
   };
 
@@ -448,7 +395,10 @@ const MyCreationsPage = () => {
                         />
                         <div className="absolute bottom-2 right-2 flex space-x-1">
                           {creation.status === "processing" && (
-                            <Badge variant="secondary" className="flex items-center gap-1">
+                            <Badge
+                              variant="secondary"
+                              className="flex items-center gap-1"
+                            >
                               <Loader2 className="h-3 w-3 animate-spin" />
                               生成中
                             </Badge>
@@ -457,12 +407,18 @@ const MyCreationsPage = () => {
                             <Badge variant="destructive">生成失败</Badge>
                           )}
                           {creation.type === "video" && (
-                            <Badge variant="secondary" className="bg-blue-500 text-white">
+                            <Badge
+                              variant="secondary"
+                              className="bg-blue-500 text-white"
+                            >
                               视频
                             </Badge>
                           )}
                           {creation.type === "image" && (
-                            <Badge variant="secondary" className="bg-green-500 text-white">
+                            <Badge
+                              variant="secondary"
+                              className="bg-green-500 text-white"
+                            >
                               图像
                             </Badge>
                           )}
@@ -480,10 +436,16 @@ const MyCreationsPage = () => {
                       </div>
                       <CardContent className="p-4">
                         <div className="mb-2 flex items-start justify-between">
-                          <h3 className="font-medium line-clamp-1">{creation.title}</h3>
+                          <h3 className="font-medium line-clamp-1">
+                            {creation.title}
+                          </h3>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="-mr-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="-mr-2"
+                              >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
                                   width="16"
@@ -503,15 +465,21 @@ const MyCreationsPage = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleRename(creation)}>
+                              <DropdownMenuItem
+                                onClick={() => handleRename(creation)}
+                              >
                                 <Edit className="mr-2 h-4 w-4" />
                                 重命名
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDownload(creation)}>
+                              <DropdownMenuItem
+                                onClick={() => handleDownload(creation)}
+                              >
                                 <Download className="mr-2 h-4 w-4" />
                                 下载
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handlePublish(creation)}>
+                              <DropdownMenuItem
+                                onClick={() => handlePublish(creation)}
+                              >
                                 <Share2 className="mr-2 h-4 w-4" />
                                 发布
                               </DropdownMenuItem>
@@ -531,11 +499,14 @@ const MyCreationsPage = () => {
                         </p>
                         <p className="mt-2 text-xs text-muted-foreground">
                           创建于{" "}
-                          {new Date(creation.createdAt).toLocaleDateString("zh-CN", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          {new Date(creation.createdAt).toLocaleDateString(
+                            "zh-CN",
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            },
+                          )}
                         </p>
                       </CardContent>
                     </Card>
@@ -548,7 +519,9 @@ const MyCreationsPage = () => {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
                       disabled={currentPage === 1}
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -603,8 +576,11 @@ const MyCreationsPage = () => {
           </DialogHeader>
           <div className="py-4">
             您确定要删除
-            <span className="font-medium"> &ldquo;{selectedCreation?.title}&rdquo; </span>吗？
-            此操作无法撤消。
+            <span className="font-medium">
+              {" "}
+              &ldquo;{selectedCreation?.title}&rdquo;{" "}
+            </span>
+            吗？ 此操作无法撤消。
           </div>
           <DialogFooter>
             <DialogClose asChild>

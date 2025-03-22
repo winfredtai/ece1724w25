@@ -28,11 +28,11 @@ const LoginPage: React.FC = () => {
       try {
         setIsLoading(true);
         const { data, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           throw error;
         }
-        
+
         if (data.session) {
           setIsSupaAuthenticated(true);
           // 已登录，重定向到个人资料页面
@@ -44,7 +44,7 @@ const LoginPage: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+
     checkSupabaseAuth();
   }, [router, supabase]);
 
@@ -55,7 +55,11 @@ const LoginPage: React.FC = () => {
 
   // 如果正在加载或已验证，不显示页面内容
   if (isLoading || isSupaAuthenticated) {
-    return <div className="flex justify-center items-center min-h-screen">加载中...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        加载中...
+      </div>
+    );
   }
 
   return (

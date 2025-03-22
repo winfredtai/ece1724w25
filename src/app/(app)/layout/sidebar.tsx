@@ -31,9 +31,9 @@ const getNavData = (pathname: string) => ({
   navMain: [
     {
       title: "Home",
-      url: "/",
+      url: "/home",
       icon: <Home className="h-5 w-5" />,
-      isActive: pathname === "/",
+      isActive: pathname === "/home",
     },
     {
       title: "Explore",
@@ -64,7 +64,7 @@ const getNavData = (pathname: string) => ({
       icon: <User className="h-5 w-5" />,
       isActive:
         pathname.startsWith("/user/creation") ||
-        pathname.startsWith("/profile") ||
+        pathname.startsWith("/user/profile") ||
         pathname.startsWith("/tools"),
       items: [
         {
@@ -75,9 +75,9 @@ const getNavData = (pathname: string) => ({
         },
         {
           title: "Profile",
-          url: "/profile",
+          url: "/user/profile",
           icon: <FolderOpen className="h-4 w-4" />,
-          isActive: pathname.startsWith("/profile"),
+          isActive: pathname.startsWith("/user/profile"),
         },
       ],
     },

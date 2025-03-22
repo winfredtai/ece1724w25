@@ -1,9 +1,8 @@
 "use client"; // This is a client component that uses React hooks
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { User } from "@supabase/supabase-js";
 import {
   Input,
   Button,
@@ -43,20 +42,13 @@ import {
   Users,
 } from "lucide-react";
 import { CreationCard } from "@/components/creation-card";
+import { Tables } from "@/types/supabase";
+import { useAuth } from "@/components/authProvider";
 
-// Types for mock data
-interface UserCreation {
-  id: string;
-  type: "video" | "image";
-  title: string;
-  description: string;
-  thumbnailUrl: string;
-  url: string;
-  createdAt: string;
-  status: "completed" | "processing" | "failed";
-}
+type UserCreation = Partial<Tables<"video_generation_task_definitions">> &
+  Partial<Tables<"video_generation_task_statuses">>;
 
-interface UserStats {
+type UserStats = {
   totalCreations: number;
   completedCreations: number;
   processingCreations: number;
@@ -64,21 +56,13 @@ interface UserStats {
   videoCount: number;
   imageCount: number;
   usagePercentage: number;
-}
+};
 
-interface UserSubscription {
-  plan: "free" | "basic" | "pro" | "enterprise";
-  startDate: string;
-  nextBillingDate: string;
-  creditsTotal: number;
-  creditsUsed: number;
-}
+type UserSubscription = Tables<"user_subscriptions">;
 
 const ProfilePage: React.FC = () => {
   const router = useRouter();
   const supabase = createClient();
-  const [isLoading, setIsLoading] = useState(true);
-  const [supaUser, setSupaUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [profileForm, setProfileForm] = useState({
     name: "",
@@ -90,69 +74,11 @@ const ProfilePage: React.FC = () => {
     },
   });
 
-  // Mock data for user creations
-  const [userCreations, setUserCreations] = useState<UserCreation[]>([
-    {
-      id: "1",
-      type: "video",
-      title: "太空中飞行的宇航员",
-      description: "一个宇航员在星空中漫游，周围是壮丽的星云和行星",
-      thumbnailUrl: "/images/creations/space.jpg",
-      url: "https://example.com/video1.mp4",
-      createdAt: "2023-04-15T10:30:00Z",
-      status: "completed",
-    },
-    {
-      id: "2",
-      type: "video",
-      title: "海底世界探索",
-      description: "深海的神秘生物和珊瑚礁，色彩斑斓的鱼群穿梭其中",
-      thumbnailUrl: "/images/creations/underwater.jpg",
-      url: "https://example.com/video2.mp4",
-      createdAt: "2023-04-10T14:20:00Z",
-      status: "completed",
-    },
-    {
-      id: "3",
-      type: "image",
-      title: "未来城市全景",
-      description: "2150年的未来城市，高楼林立，飞行汽车穿梭其中",
-      thumbnailUrl: "/images/creations/future-city.jpg",
-      url: "https://example.com/image1.jpg",
-      createdAt: "2023-04-05T09:15:00Z",
-      status: "completed",
-    },
-    {
-      id: "4",
-      type: "video",
-      title: "正在生成中...",
-      description: "森林中的神秘小屋，周围是雾气缭绕的古树",
-      thumbnailUrl: "/images/creations/forest.jpg",
-      url: "",
-      createdAt: "2023-04-20T16:45:00Z",
-      status: "processing",
-    },
-  ]);
-
-  // Mock user stats
-  const [userStats] = useState<UserStats>({
-    totalCreations: 14,
-    completedCreations: 12,
-    processingCreations: 1,
-    failedCreations: 1,
-    videoCount: 10,
-    imageCount: 4,
-    usagePercentage: 65,
-  });
-
-  // Mock subscription data
-  const [subscription] = useState<UserSubscription>({
-    plan: "basic",
-    startDate: "2023-03-01T00:00:00Z",
-    nextBillingDate: "2023-05-01T00:00:00Z",
-    creditsTotal: 100,
-    creditsUsed: 65,
-  });
+  const [userCreations, setUserCreations] = useState<UserCreation[]>([]);
+  const [userStats, setUserStats] = useState<UserStats>({} as UserStats);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(
+    null,
+  );
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -164,64 +90,213 @@ const ProfilePage: React.FC = () => {
     currentPage * itemsPerPage,
   );
 
-  // 获取 Supabase 用户信息
-  useEffect(() => {
-    const checkSupabaseAuth = async () => {
-      try {
-        setIsLoading(true);
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          throw error;
-        }
-        
-        if (data.session) {
-          setSupaUser(data.session.user);
-          
-          // 获取用户信息
-          const { data: userData, error: userError } = await supabase.auth.getUser();
-          if (userError) {
-            throw userError;
-          }
-          
-          if (userData.user) {
-            setSupaUser(userData.user);
-            
-            // 设置表单默认值
-            setProfileForm({
-              name: userData.user.user_metadata?.full_name || userData.user.user_metadata?.name || "",
-              email: userData.user.email || "",
-              preferences: {
-                theme: "system",
-                notifications: true,
-                language: "zh-CN",
-              },
-            });
-          }
-        } else {
-          router.push("/login");
-        }
-      } catch (err) {
-        console.error("检查认证状态时出错:", err);
-        router.push("/login");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    checkSupabaseAuth();
-  }, [router, supabase]);
+  const { user, logout, getAvatarUrl } = useAuth();
 
-  // 处理 Supabase 登出
-  const handleLogout = async () => {
+  // Function declarations with useCallback
+  const fetchUserCreations = useCallback(async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      router.push("/");
+      const response = await fetch("/user/fetch-creation");
+      if (!response.ok) {
+        throw new Error(`Error fetching creations: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const creations = data.creations as UserCreation[];
+
+      if (!creations || creations.length === 0) {
+        setUserCreations([]);
+        setUserStats((prev) => ({
+          ...prev,
+          totalCreations: 0,
+          completedCreations: 0,
+          processingCreations: 0,
+          failedCreations: 0,
+          videoCount: 0,
+          imageCount: 0,
+        }));
+        return;
+      }
+
+      setUserCreations(creations);
+
+      const stats = {
+        totalCreations: creations.length,
+        completedCreations: creations.filter((c) => c.status === "completed")
+          .length,
+        processingCreations: creations.filter((c) => c.status === "processing")
+          .length,
+        failedCreations: creations.filter((c) => c.status === "failed").length,
+        videoCount: creations.filter((c) => c.task_type === "video").length,
+        imageCount: creations.filter((c) => c.task_type === "image").length,
+      };
+
+      setUserStats((prev) => ({
+        ...prev,
+        ...stats,
+      }));
     } catch (error) {
-      console.error("登出失败:", error);
+      console.error("获取用户创作失败:", error);
+    }
+  }, []);
+
+  const fetchUserSubscription = useCallback(async () => {
+    try {
+      const response = await fetch("/user/fetch-subscription");
+      const data = await response.json();
+      setSubscription(data);
+    } catch (error) {
+      console.error("获取用户订阅失败:", error);
+    }
+  }, []);
+
+  const fetchUserCredits = useCallback(async () => {
+    try {
+      const response = await fetch("/user/fetch-credit");
+      const data = await response.json();
+      setUserStats((prev) => ({
+        ...prev,
+        usagePercentage: subscription?.credits_per_period
+          ? Math.round(
+              (data.total_credits_used / subscription.credits_per_period) * 100,
+            )
+          : 0,
+      }));
+    } catch (error) {
+      console.error("获取用户额度失败:", error);
+    }
+  }, [subscription]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserCreations();
+      fetchUserSubscription();
+      fetchUserCredits();
+    }
+  }, [
+    user,
+    fetchUserCreations,
+    fetchUserSubscription,
+    fetchUserCredits,
+    subscription,
+  ]);
+
+  const handleDeleteCreation = async (id: number) => {
+    try {
+      // Delete the task status first (due to foreign key constraint)
+      const { error: statusError } = await supabase
+        .from("video_generation_task_statuses")
+        .delete()
+        .eq("task_id", id);
+
+      if (statusError) throw statusError;
+
+      // Then delete the task definition
+      const { error: taskError } = await supabase
+        .from("video_generation_task_definitions")
+        .delete()
+        .eq("id", id);
+
+      if (taskError) throw taskError;
+
+      // Update the UI
+      setUserCreations(userCreations.filter((creation) => creation.id !== id));
+
+      // Update stats
+      const deletedCreation = userCreations.find((c) => c.id === id);
+      if (deletedCreation) {
+        setUserStats((prev) => ({
+          ...prev,
+          totalCreations: prev.totalCreations - 1,
+          completedCreations:
+            deletedCreation.status === "completed"
+              ? prev.completedCreations - 1
+              : prev.completedCreations,
+          processingCreations:
+            deletedCreation.status === "processing"
+              ? prev.processingCreations - 1
+              : prev.processingCreations,
+          failedCreations:
+            deletedCreation.status === "failed"
+              ? prev.failedCreations - 1
+              : prev.failedCreations,
+          videoCount:
+            deletedCreation.task_type === "video"
+              ? prev.videoCount - 1
+              : prev.videoCount,
+          imageCount:
+            deletedCreation.task_type === "image"
+              ? prev.imageCount - 1
+              : prev.imageCount,
+        }));
+      }
+    } catch (error) {
+      console.error("删除创作失败:", error);
     }
   };
+
+  //   // Mock data for user creations
+  //   const [userCreations, setUserCreations] = useState<UserCreation[]>([
+  //     {
+  //       id: 1,
+  //       type: "video",
+  //       title: "太空中飞行的宇航员",
+  //       description: "一个宇航员在星空中漫游，周围是壮丽的星云和行星",
+  //       thumbnailUrl: "/images/creations/space.jpg",
+  //       url: "https://example.com/video1.mp4",
+  //       createdAt: "2023-04-15T10:30:00Z",
+  //       status: "completed",
+  //     },
+  //     {
+  //       id: "2",
+  //       type: "video",
+  //       title: "海底世界探索",
+  //       description: "深海的神秘生物和珊瑚礁，色彩斑斓的鱼群穿梭其中",
+  //       thumbnailUrl: "/images/creations/underwater.jpg",
+  //       url: "https://example.com/video2.mp4",
+  //       createdAt: "2023-04-10T14:20:00Z",
+  //       status: "completed",
+  //     },
+  //     {
+  //       id: "3",
+  //       type: "image",
+  //       title: "未来城市全景",
+  //       description: "2150年的未来城市，高楼林立，飞行汽车穿梭其中",
+  //       thumbnailUrl: "/images/creations/future-city.jpg",
+  //       url: "https://example.com/image1.jpg",
+  //       createdAt: "2023-04-05T09:15:00Z",
+  //       status: "completed",
+  //     },
+  //     {
+  //       id: "4",
+  //       type: "video",
+  //       title: "正在生成中...",
+  //       description: "森林中的神秘小屋，周围是雾气缭绕的古树",
+  //       thumbnailUrl: "/images/creations/forest.jpg",
+  //       url: "",
+  //       createdAt: "2023-04-20T16:45:00Z",
+  //       status: "processing",
+  //     },
+  //   ]);
+
+  //   // Mock user stats
+  //   const [userStats] = useState<UserStats>({
+  //     totalCreations: 14,
+  //     completedCreations: 12,
+  //     processingCreations: 1,
+  //     failedCreations: 1,
+  //     videoCount: 10,
+  //     imageCount: 4,
+  //     usagePercentage: 65,
+  //   });
+
+  //   // Mock subscription data
+  //   const [subscription] = useState<UserSubscription>({
+  //     plan: "basic",
+  //     startDate: "2023-03-01T00:00:00Z",
+  //     nextBillingDate: "2023-05-01T00:00:00Z",
+  //     creditsTotal: 100,
+  //     creditsUsed: 65,
+  //   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -250,10 +325,6 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleDeleteCreation = (id: string) => {
-    setUserCreations(userCreations.filter((creation) => creation.id !== id));
-  };
-
   // Function to format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -274,8 +345,8 @@ const ProfilePage: React.FC = () => {
   };
 
   // Get subscription plan display information
-  const getSubscriptionPlanInfo = (plan: string) => {
-    switch (plan) {
+  const getSubscriptionPlanInfo = (planType: string) => {
+    switch (planType) {
       case "free":
         return { name: "免费版", color: "bg-gray-200 text-gray-700" };
       case "basic":
@@ -289,44 +360,26 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const planInfo = getSubscriptionPlanInfo(subscription.plan);
+  const planInfo = subscription
+    ? getSubscriptionPlanInfo(subscription.plan_type)
+    : getSubscriptionPlanInfo("free");
 
   // 获取用户展示信息
   const getUserInitials = () => {
-    if (supaUser?.user_metadata?.full_name) {
-      const nameParts = supaUser.user_metadata.full_name.split(' ');
+    if (user?.user_metadata?.full_name) {
+      const nameParts = user.user_metadata.full_name.split(" ");
       if (nameParts.length >= 2) {
         return (nameParts[0][0] + nameParts[1][0]).toUpperCase();
       }
-      return supaUser.user_metadata.full_name.substring(0, 2).toUpperCase();
+      return user.user_metadata.full_name.substring(0, 2).toUpperCase();
     }
-    
-    if (supaUser?.email) {
-      return supaUser.email.substring(0, 2).toUpperCase();
+
+    if (user?.email) {
+      return user.email.substring(0, 2).toUpperCase();
     }
-    
+
     return "?";
   };
-  
-  const getAvatarUrl = () => {
-    if (supaUser?.user_metadata?.avatar_url) {
-      return supaUser.user_metadata.avatar_url;
-    }
-    
-    if (supaUser?.user_metadata?.picture) {
-      return supaUser.user_metadata.picture;
-    }
-    
-    return "";
-  };
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center min-h-screen">加载中...</div>;
-  }
-
-  if (!supaUser) {
-    return null; // 重定向到登录页面已在useEffect中处理
-  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -342,9 +395,11 @@ const ProfilePage: React.FC = () => {
             </Avatar>
             <div className="text-center md:text-left">
               <h1 className="text-3xl font-bold mb-1">
-                {supaUser.user_metadata?.full_name || supaUser.user_metadata?.name || supaUser.email}
+                {user?.user_metadata?.full_name ||
+                  user?.user_metadata?.name ||
+                  user?.email}
               </h1>
-              <div className="text-muted-foreground mb-2">{supaUser.email}</div>
+              <div className="text-muted-foreground mb-2">{user?.email}</div>
               <div className="flex items-center justify-center md:justify-start space-x-2">
                 <Badge variant="outline" className="flex items-center">
                   <Users className="h-3 w-3 mr-1" />
@@ -431,14 +486,15 @@ const ProfilePage: React.FC = () => {
                     <h3 className="text-sm font-medium mb-1">账户创建时间</h3>
                     <div className="text-sm flex items-center">
                       <Calendar className="h-4 w-4 mr-1" />
-                      {formatDate(supaUser.created_at)}
+                      {formatDate(user?.created_at || "")}
                     </div>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium mb-1">最近登录时间</h3>
                     <div className="text-sm flex items-center">
                       <Clock className="h-4 w-4 mr-1" />
-                      {formatDate(supaUser.user_metadata?.last_sign_in_at)} {formatTime(supaUser.user_metadata?.last_sign_in_at)}
+                      {formatDate(user?.user_metadata?.last_sign_in_at)}{" "}
+                      {formatTime(user?.user_metadata?.last_sign_in_at)}
                     </div>
                   </div>
                 </>
@@ -449,7 +505,7 @@ const ProfilePage: React.FC = () => {
                 variant="destructive"
                 size="sm"
                 className="w-full"
-                onClick={handleLogout}
+                onClick={logout}
               >
                 退出登录
               </Button>
@@ -472,24 +528,33 @@ const ProfilePage: React.FC = () => {
                 <div className="flex justify-between mb-1">
                   <span className="text-sm">额度使用情况</span>
                   <span className="text-sm font-medium">
-                    {subscription.creditsUsed}/{subscription.creditsTotal}
+                    {subscription?.credits_per_period || 0}/
+                    {subscription?.credits_per_period || 0}
                   </span>
                 </div>
                 <Progress
                   value={
-                    (subscription.creditsUsed / subscription.creditsTotal) * 100
+                    subscription
+                      ? (subscription.credits_per_period /
+                          subscription.credits_per_period) *
+                        100
+                      : 0
                   }
                   className="h-2"
                 />
               </div>
               <div>
                 <h3 className="text-sm font-medium mb-1">订阅开始日期</h3>
-                <p className="text-sm">{formatDate(subscription.startDate)}</p>
+                <p className="text-sm">
+                  {subscription ? formatDate(subscription.start_date) : "-"}
+                </p>
               </div>
               <div>
                 <h3 className="text-sm font-medium mb-1">下次续费日期</h3>
                 <p className="text-sm">
-                  {formatDate(subscription.nextBillingDate)}
+                  {subscription
+                    ? formatDate(subscription.next_renewal_date)
+                    : "-"}
                 </p>
               </div>
             </CardContent>
@@ -511,25 +576,23 @@ const ProfilePage: React.FC = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-primary/5 p-3 rounded-lg">
-                  <h3 className="text-sm text-muted-foreground mb-1">
-                    总创作数
-                  </h3>
+                  <h3 className="text-sm font-medium mb-1">总创作数</h3>
                   <p className="text-2xl font-bold">
                     {userStats.totalCreations}
                   </p>
                 </div>
                 <div className="bg-primary/5 p-3 rounded-lg">
-                  <h3 className="text-sm text-muted-foreground mb-1">已完成</h3>
+                  <h3 className="text-sm font-medium mb-1">已完成</h3>
                   <p className="text-2xl font-bold">
                     {userStats.completedCreations}
                   </p>
                 </div>
                 <div className="bg-primary/5 p-3 rounded-lg">
-                  <h3 className="text-sm text-muted-foreground mb-1">视频</h3>
+                  <h3 className="text-sm font-medium mb-1">视频</h3>
                   <p className="text-2xl font-bold">{userStats.videoCount}</p>
                 </div>
                 <div className="bg-primary/5 p-3 rounded-lg">
-                  <h3 className="text-sm text-muted-foreground mb-1">图片</h3>
+                  <h3 className="text-sm font-medium mb-1">图片</h3>
                   <p className="text-2xl font-bold">{userStats.imageCount}</p>
                 </div>
               </div>
@@ -592,98 +655,216 @@ const ProfilePage: React.FC = () => {
                   {userCreations.length > 0 ? (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        {paginatedCreations.map((creation) => (
+                        {/* Show only 2 creations in profile page */}
+                        {paginatedCreations.slice(0, 2).map((creation) => (
                           <CreationCard
-                            key={creation.id}
-                            creation={creation}
-                            onDelete={() => handleDeleteCreation(creation.id)}
+                            key={creation.id?.toString() || ""}
+                            creation={{
+                              id: creation.id?.toString() || "",
+                              type:
+                                creation.task_type === "video"
+                                  ? "video"
+                                  : "image",
+                              title: creation.prompt || "Untitled",
+                              description: creation.prompt || "",
+                              thumbnailUrl:
+                                creation.thumbnail_url ||
+                                "/images/creations/placeholder.jpg",
+                              url: creation.result_url || "",
+                              createdAt: creation.created_at || "",
+                              status:
+                                (creation.status as
+                                  | "completed"
+                                  | "processing"
+                                  | "failed") || "processing",
+                            }}
+                            onDelete={() =>
+                              handleDeleteCreation(creation.id || 0)
+                            }
                           />
                         ))}
                       </div>
 
-                      {/* Pagination */}
-                      {totalPages > 1 && (
-                        <div className="flex justify-center mt-6">
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setCurrentPage((prev) => Math.max(prev - 1, 1))
-                              }
-                              disabled={currentPage === 1}
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <div className="text-sm">
-                              页 {currentPage} / {totalPages}
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setCurrentPage((prev) =>
-                                  Math.min(prev + 1, totalPages),
-                                )
-                              }
-                              disabled={currentPage === totalPages}
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
+                      {/* View All button */}
+                      <div className="flex justify-center mt-6">
+                        <Button
+                          onClick={() => router.push("/user/creation")}
+                          variant="outline"
+                          className="w-full max-w-xs"
+                        >
+                          查看全部创作
+                        </Button>
+                      </div>
+
+                      {/* Pagination controls - hidden in profile page */}
+                      {false && totalPages > 1 && (
+                        <div className="flex justify-center items-center space-x-2 mt-6">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setCurrentPage((prev) => Math.max(prev - 1, 1))
+                            }
+                            disabled={currentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm">
+                            {currentPage} / {totalPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setCurrentPage((prev) =>
+                                Math.min(prev + 1, totalPages),
+                              )
+                            }
+                            disabled={currentPage === totalPages}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="text-center py-12">
-                      <div className="inline-block p-3 rounded-full bg-muted mb-4">
-                        <Film className="h-6 w-6 text-muted-foreground" />
+                      <div className="text-muted-foreground mb-4">
+                        您还没有创作任何内容
                       </div>
-                      <h3 className="text-lg font-medium">还没有创作</h3>
-                      <p className="text-muted-foreground mb-4">
-                        开始创建您的第一个AI生成内容吧
-                      </p>
                       <Button onClick={() => router.push("/text-to-video")}>
-                        创建新视频
+                        创建第一个视频
                       </Button>
                     </div>
                   )}
                 </TabsContent>
 
                 <TabsContent value="videos" className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {userCreations
-                      .filter((creation) => creation.type === "video")
-                      .slice(
-                        (currentPage - 1) * itemsPerPage,
-                        currentPage * itemsPerPage,
-                      )
-                      .map((creation) => (
-                        <CreationCard
-                          key={creation.id}
-                          creation={creation}
-                          onDelete={() => handleDeleteCreation(creation.id)}
-                        />
-                      ))}
-                  </div>
+                  {userCreations.filter((c) => c.task_type === "video").length >
+                  0 ? (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {/* Show only 2 video creations */}
+                        {userCreations
+                          .filter((c) => c.task_type === "video")
+                          .slice(0, 2)
+                          .map((creation) => (
+                            <CreationCard
+                              key={creation.id?.toString() || ""}
+                              creation={{
+                                id: creation.id?.toString() || "",
+                                type:
+                                  creation.task_type === "video"
+                                    ? "video"
+                                    : "image",
+                                title: creation.prompt || "Untitled",
+                                description: creation.prompt || "",
+                                thumbnailUrl:
+                                  creation.thumbnail_url ||
+                                  "/images/creations/placeholder.jpg",
+                                url: creation.result_url || "",
+                                createdAt: creation.created_at || "",
+                                status:
+                                  (creation.status as
+                                    | "completed"
+                                    | "processing"
+                                    | "failed") || "processing",
+                              }}
+                              onDelete={() =>
+                                handleDeleteCreation(creation.id || 0)
+                              }
+                            />
+                          ))}
+                      </div>
+
+                      {/* View All Videos button */}
+                      {userCreations.filter((c) => c.task_type === "video")
+                        .length > 2 && (
+                        <div className="flex justify-center mt-6">
+                          <Button
+                            onClick={() => router.push("/user/creation")}
+                            variant="outline"
+                            className="w-full max-w-xs"
+                          >
+                            查看全部视频
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="text-muted-foreground mb-4">
+                        您还没有创建任何视频
+                      </div>
+                      <Button onClick={() => router.push("/text-to-video")}>
+                        创建第一个视频
+                      </Button>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="images" className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {userCreations
-                      .filter((creation) => creation.type === "image")
-                      .slice(
-                        (currentPage - 1) * itemsPerPage,
-                        currentPage * itemsPerPage,
-                      )
-                      .map((creation) => (
-                        <CreationCard
-                          key={creation.id}
-                          creation={creation}
-                          onDelete={() => handleDeleteCreation(creation.id)}
-                        />
-                      ))}
-                  </div>
+                  {userCreations.filter((c) => c.task_type === "image").length >
+                  0 ? (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {/* Show only 2 image creations */}
+                        {userCreations
+                          .filter((c) => c.task_type === "image")
+                          .slice(0, 2)
+                          .map((creation) => (
+                            <CreationCard
+                              key={creation.id?.toString() || ""}
+                              creation={{
+                                id: creation.id?.toString() || "",
+                                type:
+                                  creation.task_type === "video"
+                                    ? "video"
+                                    : "image",
+                                title: creation.prompt || "Untitled",
+                                description: creation.prompt || "",
+                                thumbnailUrl:
+                                  creation.thumbnail_url ||
+                                  "/images/creations/placeholder.jpg",
+                                url: creation.result_url || "",
+                                createdAt: creation.created_at || "",
+                                status:
+                                  (creation.status as
+                                    | "completed"
+                                    | "processing"
+                                    | "failed") || "processing",
+                              }}
+                              onDelete={() =>
+                                handleDeleteCreation(creation.id || 0)
+                              }
+                            />
+                          ))}
+                      </div>
+
+                      {/* View All Images button */}
+                      {userCreations.filter((c) => c.task_type === "image")
+                        .length > 2 && (
+                        <div className="flex justify-center mt-6">
+                          <Button
+                            onClick={() => router.push("/user/creation")}
+                            variant="outline"
+                            className="w-full max-w-xs"
+                          >
+                            查看全部图片
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="text-muted-foreground mb-4">
+                        您还没有创建任何图片
+                      </div>
+                      <Button onClick={() => router.push("/text-to-image")}>
+                        创建第一个图片
+                      </Button>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </CardContent>

@@ -157,7 +157,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       savePreviousPath();
 
       // Specify redirect URL, ensuring correct callback handling
-      const redirectUrl = `${window.location.origin}/auth/callback?next=${getPreviousPath()}`;
+      let redirectUrl = `${window.location.origin}/auth/callback`;
+      if (getPreviousPath()) {
+        redirectUrl += `?next=${getPreviousPath()}`;
+      }
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",

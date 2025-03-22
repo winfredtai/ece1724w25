@@ -19,10 +19,14 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ error: Error | null }>;
   loginWithGoogle: () => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  loginWithOtp: (email: string) => Promise<{ error: Error | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<boolean>;
   getAvatarUrl: () => string;
   getUserInitials: () => string;
+  savePreviousPath: () => void;
+  getPreviousPath: () => string | null;
 }
 
 // Create the context with a default value
@@ -38,6 +42,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
+
+  // Store the previous path for redirection after login
+  const savePreviousPath = useCallback(() => {
+    if (typeof window !== "undefined") {
+      const currentPath = window.location.pathname + window.location.search;
+      // Don't save login/signup/auth pages as previous paths
+      if (
+        !currentPath.includes("/login") &&
+        !currentPath.includes("/signup") &&
+        !currentPath.includes("/auth/")
+      ) {
+        localStorage.setItem("previousPath", currentPath);
+      }
+    }
+  }, []);
+
+  const getPreviousPath = useCallback(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("previousPath");
+    }
+    return null;
+  }, []);
 
   // Refresh auth state - can be called from any component
   const refreshAuth = useCallback(async (): Promise<boolean> => {
@@ -127,8 +153,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Login with Google function
   const loginWithGoogle = async () => {
     try {
+      // Save current path for redirection after login
+      savePreviousPath();
+
       // Specify redirect URL, ensuring correct callback handling
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const redirectUrl = `${window.location.origin}/auth/callback?next=${getPreviousPath()}`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -139,6 +168,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             prompt: "consent",
           },
         },
+      });
+
+      return { error };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
+  // Login with OTP function
+  const loginWithOtp = async (email: string) => {
+    try {
+      // Save current path for redirection after login
+      savePreviousPath();
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+        },
+      });
+
+      return { error };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
+  // Verify OTP function
+  const verifyOtp = async (email: string, token: string) => {
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "email",
       });
 
       return { error };
@@ -202,10 +265,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     loginWithGoogle,
     signUp,
+    loginWithOtp,
+    verifyOtp,
     logout,
     refreshAuth,
     getAvatarUrl,
     getUserInitials,
+    savePreviousPath,
+    getPreviousPath,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

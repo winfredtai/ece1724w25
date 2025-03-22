@@ -59,6 +59,7 @@ type UserStats = {
 };
 
 type UserSubscription = Tables<"user_subscriptions">;
+type UserCredits = Tables<"user_credits">;
 
 const ProfilePage: React.FC = () => {
   const router = useRouter();
@@ -143,7 +144,7 @@ const ProfilePage: React.FC = () => {
     try {
       const response = await fetch("/user/fetch-subscription");
       const data = await response.json();
-      setSubscription(data);
+      setSubscription(data as UserSubscription | null);
     } catch (error) {
       console.error("获取用户订阅失败:", error);
     }
@@ -153,18 +154,25 @@ const ProfilePage: React.FC = () => {
     try {
       const response = await fetch("/user/fetch-credit");
       const data = await response.json();
-      setUserStats((prev) => ({
-        ...prev,
-        usagePercentage: subscription?.credits_per_period
-          ? Math.round(
-              (data.total_credits_used / subscription.credits_per_period) * 100,
-            )
-          : 0,
-      }));
+      const credits = data as UserCredits | null;
+      if (credits) {
+        setUserStats((prev) => ({
+          ...prev,
+          creditsBalance: credits.credits_balance,
+          usagePercentage:
+            credits.total_credits_purchased > 0
+              ? Math.round(
+                  (credits.total_credits_used /
+                    credits.total_credits_purchased) *
+                    100,
+                )
+              : 0,
+        }));
+      }
     } catch (error) {
       console.error("获取用户额度失败:", error);
     }
-  }, [subscription]);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -172,13 +180,7 @@ const ProfilePage: React.FC = () => {
       fetchUserSubscription();
       fetchUserCredits();
     }
-  }, [
-    user,
-    fetchUserCreations,
-    fetchUserSubscription,
-    fetchUserCredits,
-    subscription,
-  ]);
+  }, [user, fetchUserCreations, fetchUserSubscription, fetchUserCredits]);
 
   const handleDeleteCreation = async (id: number) => {
     try {

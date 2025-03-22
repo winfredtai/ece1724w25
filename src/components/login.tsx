@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardHeader,
@@ -10,7 +11,16 @@ import {
   Input,
   Separator,
 } from "@/components/ui";
-import { Eye, EyeOff, Mail, Lock, AlertCircle, X } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  AlertCircle,
+  X,
+  ChevronDown,
+  ArrowLeft,
+} from "lucide-react";
 import { useAuth } from "@/components/authProvider";
 
 interface LoginProps {
@@ -24,9 +34,128 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login, loginWithGoogle } = useAuth();
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [usePasswordLogin, setUsePasswordLogin] = useState(false);
+  const [showOtherLoginMethods, setShowOtherLoginMethods] = useState(false);
+  const router = useRouter();
+  const { login, loginWithGoogle, loginWithOtp, verifyOtp, getPreviousPath } =
+    useAuth();
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Initialize the refs array
+  useEffect(() => {
+    otpInputRefs.current = otpInputRefs.current.slice(0, 6);
+    while (otpInputRefs.current.length < 6) {
+      otpInputRefs.current.push(null);
+    }
+  }, []);
+
+  // Handle sending OTP (primary login method)
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("请输入有效的电子邮件地址");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const { error } = await loginWithOtp(email);
+
+      if (error) throw error;
+
+      setOtpSent(true);
+      // Focus on first OTP input after a short delay to allow UI to update
+      setTimeout(() => {
+        if (otpInputRefs.current[0]) {
+          otpInputRefs.current[0].focus();
+        }
+      }, 100);
+    } catch (err) {
+      setError("发送验证码失败。请检查您的邮箱地址并重试。");
+      console.error("OTP 发送错误:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle verifying OTP
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const otpString = otp.join("");
+      const { error } = await verifyOtp(email, otpString);
+
+      if (error) throw error;
+
+      // Redirect to previous page if available
+      const previousPath = getPreviousPath();
+      if (previousPath) {
+        if (onClose) onClose(); // Close the modal before navigation
+        router.push(previousPath);
+      } else if (onClose) {
+        onClose(); // Close the modal after successful login
+      }
+    } catch (err) {
+      setError("验证码验证失败。请检查您的验证码并重试。");
+      console.error("OTP 验证错误:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle OTP input changes
+  const handleOtpChange = (index: number, value: string) => {
+    // Only allow digits
+    if (value && !/^\d*$/.test(value)) return;
+
+    // Check if this is a paste of a complete 6-digit code
+    if (value.length === 6 && /^\d{6}$/.test(value)) {
+      const digits = value.split("");
+      setOtp(digits);
+
+      // Focus the last input after successful paste
+      otpInputRefs.current[5]?.focus();
+      return;
+    }
+
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(0, 1); // Only take the first character
+    setOtp(newOtp);
+
+    // Auto-focus next input if current input is filled
+    if (value && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  // Handle backspace in OTP inputs
+  const handleOtpKeyDown = (
+    index: number,
+    e: KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (e.key === "Backspace") {
+      if (otp[index] === "" && index > 0) {
+        // If current field is empty and backspace is pressed, focus previous field
+        const newOtp = [...otp];
+        newOtp[index - 1] = "";
+        setOtp(newOtp);
+        otpInputRefs.current[index - 1]?.focus();
+      }
+    }
+  };
+
+  // Handle traditional email/password login (secondary method)
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
@@ -37,10 +166,14 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
 
       if (error) throw error;
 
-      // 设置登录成功标记，帮助其他组件检测登录状态变化
-      document.cookie = "auth_success=true; path=/;";
-
-      if (onClose) onClose(); // Close the modal after successful login
+      // Redirect to previous page if available
+      const previousPath = getPreviousPath();
+      if (previousPath) {
+        if (onClose) onClose(); // Close the modal before navigation
+        router.push(previousPath);
+      } else if (onClose) {
+        onClose(); // Close the modal after successful login
+      }
     } catch (err) {
       setError("登录失败。请检查您的凭据并重试。");
       console.error("登录错误:", err);
@@ -73,6 +206,24 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
     }
   };
 
+  // Reset OTP form
+  const handleResendOtp = () => {
+    setOtpSent(false);
+    setOtp(["", "", "", "", "", ""]);
+  };
+
+  // Go back to email input
+  const handleBackToEmail = () => {
+    setOtpSent(false);
+    setOtp(["", "", "", "", "", ""]);
+  };
+
+  // Toggle between email-only and password login
+  const toggleLoginMethod = () => {
+    setUsePasswordLogin(!usePasswordLogin);
+    setShowOtherLoginMethods(false);
+  };
+
   // Disable scrolling when modal is open
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -87,10 +238,10 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
       style={{ top: 0, left: 0 }}
     >
       {/* Backdrop with blur effect */}
-      {/* <div
-        className='absolute inset-0 bg-black/70 backdrop-blur-sm transition-all duration-300'
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-all duration-300"
         onClick={onClose}
-      ></div> */}
+      ></div>
 
       <Card className="w-full max-w-md relative bg-background border-border">
         {/* Close button */}
@@ -106,7 +257,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
 
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            Log in to Karavideo.ai
+            登录 Karavideo.ai
           </CardTitle>
         </CardHeader>
 
@@ -154,59 +305,240 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                或者使用邮箱密码
+                或者使用邮箱验证码
               </span>
             </div>
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <div className="relative">
-                <Mail className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="邮箱"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
+          {/* Login Form - Either Email or Email+Password */}
+          {!otpSent ? (
+            <form onSubmit={handleSendOtp} className="space-y-4">
+              <div className="space-y-2">
+                <div className="relative">
+                  <Mail className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    placeholder="邮箱"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <div className="relative">
-                <Lock className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="密码"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  disabled={isLoading}
-                />
+                {usePasswordLogin && (
+                  <div className="relative mt-2">
+                    <Lock className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="密码"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10"
+                      required
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={toggleLoginMethod}
+                  className="text-sm text-primary hover:underline"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
+                  {usePasswordLogin ? "使用验证码登录" : "使用密码登录"}
                 </button>
               </div>
-            </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Loading..." : "登录"}
-            </Button>
-          </form>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
+                onClick={usePasswordLogin ? handlePasswordLogin : handleSendOtp}
+              >
+                {isLoading
+                  ? "处理中..."
+                  : usePasswordLogin
+                    ? "登录"
+                    : "发送验证码"}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={handleBackToEmail}
+                  className="flex items-center text-sm text-primary hover:underline"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  返回修改邮箱
+                </button>
+              </div>
+
+              <div className="text-sm text-center mb-2">
+                请输入发送到 {email} 的 6 位验证码
+              </div>
+
+              <div className="grid grid-cols-6 gap-2 mb-4">
+                {otp.map((digit, index) => (
+                  <Input
+                    key={index}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={index === 0 ? 6 : 1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                    className="text-center px-0 text-lg"
+                    disabled={isLoading}
+                    ref={(el) => {
+                      otpInputRefs.current[index] = el;
+                    }}
+                    autoFocus={index === 0}
+                    onPaste={
+                      index === 0
+                        ? (e) => {
+                            e.preventDefault();
+                            const pasteData = e.clipboardData.getData("text");
+                            if (pasteData && /^\d{6}$/.test(pasteData)) {
+                              handleOtpChange(0, pasteData);
+                            }
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+
+              <div className="text-xs text-center">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  className="text-primary hover:underline"
+                  disabled={isLoading}
+                >
+                  重新发送验证码
+                </button>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading || otp.some((digit) => !digit)}
+              >
+                {isLoading ? "验证中..." : "验证并登录"}
+              </Button>
+            </form>
+          )}
+
+          {/* Other login methods toggle - only show when not in password mode */}
+          {!usePasswordLogin && !otpSent && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowOtherLoginMethods(!showOtherLoginMethods)}
+                className="w-full flex items-center justify-between text-sm text-muted-foreground hover:text-foreground py-2"
+              >
+                <span>其他登录方式</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${
+                    showOtherLoginMethods ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {/* Other login methods section */}
+              {showOtherLoginMethods && (
+                <div className="mt-4 space-y-3">
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2"
+                    type="button"
+                    disabled={isLoading}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <circle cx="12" cy="10" r="3" />
+                      <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+                    </svg>
+                    <span>SSO 登录</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2"
+                    type="button"
+                    disabled={isLoading}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                    <span>手机号登录</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2"
+                    type="button"
+                    disabled={isLoading}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+                    </svg>
+                    <span>GitHub 登录</span>
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-2">

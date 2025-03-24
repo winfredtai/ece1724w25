@@ -9,6 +9,36 @@ interface UpdateResult {
   error?: string;
 }
 
+// 直接从外部服务获取视频状态的函数
+async function getVideoStatus(videoId: string) {
+  try {
+    // 使用绝对URL直接请求302AI服务，不通过自己的API
+    const apiUrl = `https://302.ai/api/v1/tasks/${videoId}/result`;
+    console.log(`直接调用外部API: ${apiUrl}`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90秒超时
+    
+    const response = await fetch(apiUrl, {
+      signal: controller.signal,
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`外部API请求失败: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`获取视频 ${videoId} 状态失败:`, error);
+    throw error;
+  }
+}
+
 export async function GET() {
   console.log("开始执行视频状态更新任务...");
   console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL ? "已设置" : "未设置");
@@ -69,28 +99,29 @@ export async function GET() {
       try {
         console.log(`开始检查任务 ${task.external_task_id} 的状态...`);
         
-        // 构建API URL，避免自引用
-        const apiUrl = `${process.env.NEXT_PUBLIC_URL || ""}/api/videos/status/${task.external_task_id}`;
-        console.log(`调用API: ${apiUrl}`);
-        
-        // 调用API获取最新状态，添加超时处理
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
-        
-        const response = await fetch(apiUrl, { 
-          signal: controller.signal,
-          headers: {
-            'Cache-Control': 'no-cache'
+        // 直接调用外部API获取状态，不通过自己的API
+        let statusData;
+        try {
+          // 尝试直接从外部获取
+          statusData = await getVideoStatus(task.external_task_id);
+          console.log(`成功获取任务 ${task.external_task_id} 的外部API响应`);
+        } catch (apiError) {
+          // 如果外部API调用失败，尝试使用内部API作为后备
+          console.warn(`外部API调用失败，尝试使用内部API: ${apiError}`);
+          
+          const apiUrl = `${process.env.NEXT_PUBLIC_URL || ""}/api/videos/status/${task.external_task_id}`;
+          const response = await fetch(apiUrl, {
+            headers: { 'Cache-Control': 'no-cache' },
+            // 不设置超时，依赖Vercel的默认超时
+          });
+          
+          if (!response.ok) {
+            throw new Error(`内部API请求也失败: ${response.status}`);
           }
-        });
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          console.error(`API请求失败: ${response.status} ${response.statusText}`);
-          throw new Error(`API请求失败: ${response.status}`);
+          
+          statusData = await response.json();
         }
         
-        const statusData = await response.json();
         console.log(`获取到任务 ${task.external_task_id} 的API响应:`, 
           JSON.stringify(statusData).substring(0, 200) + "...");
         
@@ -99,8 +130,9 @@ export async function GET() {
         let thumbnailUrl = null;
         let errorMessage = null;
         
-        // 解析状态
+        // 解析状态 - 为不同的API响应格式添加适配
         if (statusData.success && statusData.data?.data) {
+          // 处理通过内部API获取的格式
           const apiData = statusData.data.data;
           
           // 检查任务状态
@@ -122,10 +154,22 @@ export async function GET() {
           } else {
             console.log(`任务 ${task.external_task_id} 状态未知: ${apiData.status}`);
           }
+        } else if (statusData.status === 1 || statusData.videoUrl) {
+          // 处理直接从外部API获取的格式
+          newStatus = "completed";
+          resultUrl = statusData.videoUrl;
+          thumbnailUrl = statusData.coverUrl;
+          console.log(`任务 ${task.external_task_id} 已完成 (外部API)，视频URL: ${resultUrl?.substring(0, 50)}...`);
         } else if (statusData.status === -1) {
           newStatus = "failed";
-          errorMessage = statusData.message || "视频生成失败";
+          errorMessage = statusData.message || statusData.error || "视频生成失败";
           console.log(`任务 ${task.external_task_id} 失败: ${errorMessage}`);
+        } else if (statusData.status === 5) {
+          newStatus = "queued";
+          console.log(`任务 ${task.external_task_id} 在队列中等待 (外部API)`);
+        } else if (statusData.status === 10) {
+          newStatus = "processing";
+          console.log(`任务 ${task.external_task_id} 正在处理中 (外部API)`);
         } else {
           console.log(`无法识别任务 ${task.external_task_id} 的状态:`, 
             JSON.stringify(statusData).substring(0, 200));

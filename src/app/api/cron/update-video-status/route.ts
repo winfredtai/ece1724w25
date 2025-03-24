@@ -15,20 +15,48 @@ async function getAuthToken(supabase: any) {
     // 尝试获取系统预设的API密钥
     const apiKey = process.env.API_SECRET_KEY;
     if (apiKey) {
+      console.log("从环境变量获取到API密钥");
       return apiKey;
     }
     
-    // 或者从数据库获取
-    const { data, error } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'api_token')
-      .single();
+    // 从Vercel环境变量中获取专门的内部API令牌
+    const internalApiToken = process.env.INTERNAL_API_TOKEN;
+    if (internalApiToken) {
+      console.log("从环境变量获取到内部API令牌");
+      return internalApiToken;
+    }
+    
+    // 尝试从数据库获取
+    try {
+      // 检查表是否存在
+      const { data: tableExists, error: checkError } = await supabase
+        .from('system_settings')
+        .select('count(*)', { count: 'exact', head: true });
       
-    if (error) throw error;
-    return data?.value || null;
+      if (checkError) {
+        // 如果表不存在，会抛出错误
+        console.log("system_settings表不存在，跳过数据库查询");
+        return null;
+      }
+      
+      // 如果表存在，尝试获取token
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'api_token')
+        .single();
+        
+      if (error) throw error;
+      console.log("从数据库获取到API令牌");
+      return data?.value || null;
+    } catch (dbError) {
+      // 忽略数据库错误，继续运行
+      console.warn("数据库查询失败，将尝试无认证调用API:", dbError);
+      return null;
+    }
   } catch (error) {
     console.error('获取认证令牌失败:', error);
+    // 返回null，表示无认证
     return null;
   }
 }
@@ -101,24 +129,22 @@ export async function GET() {
       try {
         console.log(`开始检查任务 ${task.external_task_id} 的状态...`);
         
-        // 直接调用302AI API获取状态
-        const apiUrl = `https://api.302.ai/klingai/task/${task.external_task_id}/fetch`;
-        console.log(`直接调用302AI API: ${apiUrl}`);
-        
-        // 设置超时
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 90000);
-        
-        let response;
         let statusData;
+        let apiSource = '未知';
         
         try {
-          // 尝试直接从302AI获取状态
-          response = await fetch(apiUrl, {
+          // 尝试方法1: 直接调用302AI API
+          const apiUrl = `https://api.302.ai/klingai/task/${task.external_task_id}/fetch`;
+          console.log(`尝试调用302AI API: ${apiUrl}`);
+          
+          // 设置超时
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 90000);
+          
+          const response = await fetch(apiUrl, {
             signal: controller.signal,
             headers: { 
               'Cache-Control': 'no-cache',
-              // 可能需要添加302AI的认证头
               'Authorization': process.env.API_302_TOKEN || ''
             }
           });
@@ -130,42 +156,71 @@ export async function GET() {
           }
           
           statusData = await response.json();
-          console.log(`成功获取任务 ${task.external_task_id} 的302AI响应`);
+          apiSource = '302AI';
+          console.log(`成功从302AI获取任务 ${task.external_task_id} 的状态`);
         } catch (externalApiError) {
-          // 如果302AI API调用失败，尝试使用内部API
-          console.warn(`302AI API调用失败: ${externalApiError}，尝试使用内部API`);
+          // 外部API失败，尝试方法2: 使用内部API
+          console.warn(`302AI API调用失败: ${externalApiError}`);
           
-          // 构建内部API URL
-          const internalApiUrl = `${publicUrl}/api/videos/status/${task.external_task_id}`;
-          console.log(`调用内部API: ${internalApiUrl}`);
-          
-          // 准备必要的headers
-          const headers: Record<string, string> = { 
-            'Cache-Control': 'no-cache'
-          };
-          
-          // 添加认证header (如果有token)
-          if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
+          try {
+            // 构建内部API URL
+            const internalApiUrl = `${publicUrl}/api/videos/status/${task.external_task_id}`;
+            console.log(`尝试调用内部API: ${internalApiUrl}`);
+            
+            // 准备必要的headers
+            const headers: Record<string, string> = { 
+              'Cache-Control': 'no-cache'
+            };
+            
+            // 添加认证header (如果有token)
+            if (authToken) {
+              headers['Authorization'] = `Bearer ${authToken}`;
+              console.log("添加认证头到请求");
+            } else {
+              console.log("无认证令牌，尝试无认证请求");
+            }
+            
+            const internalResponse = await fetch(internalApiUrl, { headers });
+            
+            if (!internalResponse.ok) {
+              throw new Error(`内部API请求失败: ${internalResponse.status}`);
+            }
+            
+            statusData = await internalResponse.json();
+            apiSource = '内部API';
+            console.log(`成功从内部API获取任务 ${task.external_task_id} 的状态`);
+          } catch (internalApiError) {
+            // 两种API都失败，进入备用模式
+            console.error(`所有API调用失败: ${internalApiError}`);
+            console.log(`进入备用模式，使用状态检查逻辑`);
+            
+            // 如果任务已处理超过24小时仍是processing，可能卡住了，标记为失败
+            const now = new Date();
+            const updatedAt = new Date(task.updated_at);
+            const hoursDiff = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60);
+            
+            if (task.status === "processing" && hoursDiff > 24) {
+              // 任务处理时间过长，可能卡住，标记为失败
+              console.log(`任务 ${task.external_task_id} 处理超过24小时，可能卡住，标记为失败`);
+              
+              statusData = {
+                success: false,
+                status: -1,
+                message: "任务处理超时，可能卡住"
+              };
+              apiSource = '超时检测';
+            } else {
+              // 对于其他情况，保持当前状态
+              console.log(`无法获取任务 ${task.external_task_id} 的最新状态，保持当前状态`);
+              throw internalApiError; // 重新抛出错误
+            }
           }
-          
-          // 调用内部API
-          const internalResponse = await fetch(internalApiUrl, {
-            headers
-          });
-          
-          if (!internalResponse.ok) {
-            throw new Error(`内部API请求失败: ${internalResponse.status}`);
-          }
-          
-          statusData = await internalResponse.json();
-          console.log(`成功获取任务 ${task.external_task_id} 的内部API响应`);
         }
         
-        console.log(`获取到任务 ${task.external_task_id} 的API响应:`, 
+        console.log(`获取到任务 ${task.external_task_id} 的API响应 (来源: ${apiSource}):`, 
           JSON.stringify(statusData).substring(0, 200) + "...");
         
-        let newStatus = "processing";
+        let newStatus = task.status; // 默认保持原状态
         let resultUrl = null;
         let thumbnailUrl = null;
         let errorMessage = null;
@@ -198,7 +253,7 @@ export async function GET() {
             newStatus = "processing";
             console.log(`任务 ${task.external_task_id} 正在处理中`);
           } else {
-            console.log(`任务 ${task.external_task_id} 状态未知: ${apiData.status}`);
+            console.log(`任务 ${task.external_task_id} 状态未知: ${apiData.status}，保持当前状态 ${newStatus}`);
           }
         } else if (statusData.result === 1 && statusData.data) {
           // 处理302AI API格式 (/klingai/task/)
@@ -226,11 +281,17 @@ export async function GET() {
             newStatus = "processing";
             console.log(`任务 ${task.external_task_id} 正在处理中 (302AI)`);
           } else {
-            console.log(`302AI 任务 ${task.external_task_id} 状态无法识别`);
+            console.log(`302AI 任务 ${task.external_task_id} 状态无法识别，保持当前状态 ${newStatus}`);
           }
+        } else if (statusData.status === -1 || (statusData.success === false && statusData.status)) {
+          // 处理备用模式或直接的失败状态
+          newStatus = "failed";
+          errorMessage = statusData.message || "视频生成失败";
+          console.log(`任务 ${task.external_task_id} 失败 (备用逻辑): ${errorMessage}`);
         } else {
-          // 记录无法解析的响应
+          // 无法解析的响应
           console.log(`无法解析任务 ${task.external_task_id} 的状态，完整响应:`, JSON.stringify(statusData));
+          console.log(`保持任务 ${task.external_task_id} 的当前状态: ${newStatus}`);
         }
         
         // 只有当状态有变化时才更新数据库

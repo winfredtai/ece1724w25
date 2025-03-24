@@ -43,7 +43,7 @@ export async function GET() {
     const updatePromises = pendingTasks.map(async (task) => {
       try {
         // 调用API获取最新状态
-        const response = await fetch(`${process.env.NEXT_PUBLIC_URL || ""}/api/v1/302/tasks/${task.external_task_id}/result`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_URL || ""}/api/videos/status/${task.external_task_id}`);
         const statusData = await response.json();
         
         let newStatus = "processing";
@@ -52,17 +52,25 @@ export async function GET() {
         let errorMessage = null;
         
         // 解析状态
-        if (statusData.status === 1 || statusData.videoUrl) {
-          newStatus = "completed";
-          resultUrl = statusData.videoUrl;
-          thumbnailUrl = statusData.coverUrl;
+        if (statusData.success && statusData.data?.data) {
+          const apiData = statusData.data.data;
+          
+          // 检查任务状态
+          if (apiData.status === 99 && apiData.works && apiData.works.length > 0) {
+            newStatus = "completed";
+            resultUrl = apiData.works[0].resource?.resource || null;
+            thumbnailUrl = apiData.works[0].cover?.resource || null;
+          } else if (apiData.status === -1) {
+            newStatus = "failed";
+            errorMessage = apiData.message || "视频生成失败";
+          } else if (apiData.status === 5 || apiData.queuingEtaTime > 0) {
+            newStatus = "queued";
+          } else if (apiData.status === 10 || apiData.etaTime > 0) {
+            newStatus = "processing";
+          }
         } else if (statusData.status === -1) {
           newStatus = "failed";
-          errorMessage = statusData.error || "视频生成失败";
-        } else if (statusData.status === 5) {
-          newStatus = "queued";
-        } else if (statusData.status === 10) {
-          newStatus = "processing";
+          errorMessage = statusData.message || "视频生成失败";
         }
         
         // 只有当状态有变化时才更新数据库

@@ -12,7 +12,7 @@ import {
   Label,
   Textarea,
 } from "@/components/ui";
-import { ChevronDown, BadgeInfo } from "lucide-react";
+import { ChevronDown, BadgeInfo, Loader2, Film } from "lucide-react";
 import { videoApi, VideoGenerationParams } from "@/lib/api";
 import VideoGenerationStatus from "@/components/videoGenerationStatus";
 
@@ -89,11 +89,19 @@ const TextToVideoPage: React.FC = () => {
 
     try {
       const id = await videoApi.generateVideo(params);
+      console.log("Generated video with task ID:", id);
       setTaskId(id);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "请求失败，请检查网络连接";
       setError(errorMessage);
+      setIsGenerating(false);
+    }
+  };
+
+  // 处理视频状态变化
+  const handleStatusChange = (status: number, videoUrl: string) => {
+    if (videoUrl) {
       setIsGenerating(false);
     }
   };
@@ -309,6 +317,26 @@ const TextToVideoPage: React.FC = () => {
                 {creditsRequired} 点
               </span>
             </div>
+
+            <Button
+              onClick={generateVideo}
+              disabled={isGenerating || !params.prompt.trim()}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white mt-4"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  生成中...
+                </>
+              ) : (
+                <>
+                  <Film className="mr-2 h-4 w-4" />
+                  生成视频
+                </>
+              )}
+            </Button>
+
+            {error && <p className="text-red-500 mt-2 text-sm">{error}</p>}
           </div>
 
           <VideoGenerationStatus
@@ -320,6 +348,7 @@ const TextToVideoPage: React.FC = () => {
             placeholderIcon="play"
             placeholderTitle="准备生成视频"
             placeholderDescription="填写表单并点击生成按钮开始创建您的AI视频"
+            onStatusChange={handleStatusChange}
           />
         </div>
       </div>

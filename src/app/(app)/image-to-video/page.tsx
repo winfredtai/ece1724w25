@@ -13,7 +13,7 @@ import {
   Textarea,
   Switch,
 } from "@/components/ui";
-import { ChevronDown, BadgeInfo, Upload, X } from "lucide-react";
+import { ChevronDown, BadgeInfo, Upload, X, Loader2, Film } from "lucide-react";
 import { videoApi, VideoGenerationParams } from "@/lib/api";
 import VideoGenerationStatus from "@/components/videoGenerationStatus";
 import Image from "next/image";
@@ -533,21 +533,47 @@ const ImageToVideoPage: React.FC = () => {
                 {creditsRequired} 点
               </span>
             </div>
+
+            <Button
+              onClick={generateVideo}
+              disabled={
+                isGenerating ||
+                !params.start_image ||
+                (useEndImage && !params.end_image)
+              }
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white mt-4"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  生成中...
+                </>
+              ) : (
+                <>
+                  <Film className="mr-2 h-4 w-4" />
+                  生成视频
+                </>
+              )}
+            </Button>
+
+            {error && <p className="text-red-500 mt-2 text-sm">{error}</p>}
           </div>
 
           <VideoGenerationStatus
             taskId={taskId}
-            onGenerateVideo={generateVideo}
-            isGenerateDisabled={
-              isGenerating ||
-              !params.start_image ||
-              (useEndImage && !params.end_image)
-            }
+            onGenerateVideo={() => {}}
+            isGenerateDisabled={true}
             isGenerating={isGenerating}
-            error={error}
+            error=""
             placeholderIcon="image"
             placeholderTitle="准备生成视频"
             placeholderDescription="上传图片并调整参数以开始创建图片转视频"
+            onStatusChange={(status, videoUrl) => {
+              // 如果视频加载完成或状态是失败，重置生成状态
+              if (videoUrl || status === -1) {
+                setIsGenerating(false);
+              }
+            }}
           />
         </div>
       </div>

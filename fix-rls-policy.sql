@@ -50,4 +50,26 @@ USING (EXISTS (
 
 -- 确保只有已认证的用户可以访问这些表
 GRANT SELECT, INSERT ON video_generation_task_definitions TO authenticated;
-GRANT SELECT, INSERT ON video_generation_task_statuses TO authenticated; 
+GRANT SELECT, INSERT ON video_generation_task_statuses TO authenticated;
+
+-- 为service_role添加额外的访问策略，允许cron任务访问所有记录
+
+-- 为video_generation_task_statuses表添加服务角色访问策略
+CREATE POLICY "Service role can access all task statuses"
+ON video_generation_task_statuses
+FOR ALL
+TO service_role
+USING (true)
+WITH CHECK (true);
+
+-- 为video_generation_task_definitions表添加服务角色访问策略
+CREATE POLICY "Service role can access all task definitions"
+ON video_generation_task_definitions
+FOR ALL
+TO service_role
+USING (true)
+WITH CHECK (true);
+
+-- 授予服务角色对表的所有权限
+GRANT ALL ON video_generation_task_definitions TO service_role;
+GRANT ALL ON video_generation_task_statuses TO service_role; 

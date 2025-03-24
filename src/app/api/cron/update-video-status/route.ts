@@ -9,41 +9,15 @@ interface UpdateResult {
   error?: string;
 }
 
-// 直接从外部服务获取视频状态的函数
-async function getVideoStatus(videoId: string) {
-  try {
-    // 使用绝对URL直接请求302AI服务，不通过自己的API
-    const apiUrl = `https://302.ai/api/v1/tasks/${videoId}/result`;
-    console.log(`直接调用外部API: ${apiUrl}`);
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90秒超时
-    
-    const response = await fetch(apiUrl, {
-      signal: controller.signal,
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      throw new Error(`外部API请求失败: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`获取视频 ${videoId} 状态失败:`, error);
-    throw error;
-  }
-}
-
 export async function GET() {
   console.log("开始执行视频状态更新任务...");
   console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL ? "已设置" : "未设置");
   console.log("Service Role Key:", process.env.SUPABASE_SERVICE_ROLE_KEY ? "已设置" : "未设置");
   console.log("Public URL:", process.env.NEXT_PUBLIC_URL || "未设置");
+  
+  // 确保有正确的公共URL
+  const publicUrl = process.env.NEXT_PUBLIC_URL || "https://karavideo-bbgbalrw1-hfhls-projects.vercel.app";
+  console.log("使用的Public URL:", publicUrl);
   
   // 使用service_role密钥创建客户端，这会绕过RLS
   const supabase = createClient(
@@ -99,27 +73,34 @@ export async function GET() {
       try {
         console.log(`开始检查任务 ${task.external_task_id} 的状态...`);
         
-        // 直接调用外部API获取状态，不通过自己的API
+        // 优先使用内部API查询状态
+        const apiUrl = `${publicUrl}/api/videos/status/${task.external_task_id}`;
+        console.log(`调用内部API: ${apiUrl}`);
+        
+        // 设置90秒超时，确保有足够时间获取响应
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90000);
+        
+        let response;
         let statusData;
+        
         try {
-          // 尝试直接从外部获取
-          statusData = await getVideoStatus(task.external_task_id);
-          console.log(`成功获取任务 ${task.external_task_id} 的外部API响应`);
-        } catch (apiError) {
-          // 如果外部API调用失败，尝试使用内部API作为后备
-          console.warn(`外部API调用失败，尝试使用内部API: ${apiError}`);
-          
-          const apiUrl = `${process.env.NEXT_PUBLIC_URL || ""}/api/videos/status/${task.external_task_id}`;
-          const response = await fetch(apiUrl, {
-            headers: { 'Cache-Control': 'no-cache' },
-            // 不设置超时，依赖Vercel的默认超时
+          response = await fetch(apiUrl, {
+            signal: controller.signal,
+            headers: { 'Cache-Control': 'no-cache' }
           });
           
+          clearTimeout(timeoutId);
+          
           if (!response.ok) {
-            throw new Error(`内部API请求也失败: ${response.status}`);
+            throw new Error(`内部API请求失败: ${response.status}`);
           }
           
           statusData = await response.json();
+          console.log(`成功获取任务 ${task.external_task_id} 的内部API响应`);
+        } catch (apiError) {
+          console.error(`内部API调用失败: ${apiError}`);
+          throw apiError; // 内部API失败就直接失败，不再尝试外部API
         }
         
         console.log(`获取到任务 ${task.external_task_id} 的API响应:`, 
@@ -130,49 +111,38 @@ export async function GET() {
         let thumbnailUrl = null;
         let errorMessage = null;
         
-        // 解析状态 - 为不同的API响应格式添加适配
+        // 解析内部API的响应格式
         if (statusData.success && statusData.data?.data) {
-          // 处理通过内部API获取的格式
           const apiData = statusData.data.data;
+          
+          console.log(`任务 ${task.external_task_id} 状态码: ${apiData.status}`);
           
           // 检查任务状态
           if (apiData.status === 99 && apiData.works && apiData.works.length > 0) {
+            // 状态为99表示已完成
             newStatus = "completed";
             resultUrl = apiData.works[0].resource?.resource || null;
             thumbnailUrl = apiData.works[0].cover?.resource || null;
             console.log(`任务 ${task.external_task_id} 已完成，视频URL: ${resultUrl?.substring(0, 50)}...`);
           } else if (apiData.status === -1) {
+            // 失败
             newStatus = "failed";
             errorMessage = apiData.message || "视频生成失败";
             console.log(`任务 ${task.external_task_id} 失败: ${errorMessage}`);
           } else if (apiData.status === 5 || apiData.queuingEtaTime > 0) {
+            // 队列中
             newStatus = "queued";
             console.log(`任务 ${task.external_task_id} 在队列中等待`);
           } else if (apiData.status === 10 || apiData.etaTime > 0) {
+            // 处理中
             newStatus = "processing";
             console.log(`任务 ${task.external_task_id} 正在处理中`);
           } else {
             console.log(`任务 ${task.external_task_id} 状态未知: ${apiData.status}`);
           }
-        } else if (statusData.status === 1 || statusData.videoUrl) {
-          // 处理直接从外部API获取的格式
-          newStatus = "completed";
-          resultUrl = statusData.videoUrl;
-          thumbnailUrl = statusData.coverUrl;
-          console.log(`任务 ${task.external_task_id} 已完成 (外部API)，视频URL: ${resultUrl?.substring(0, 50)}...`);
-        } else if (statusData.status === -1) {
-          newStatus = "failed";
-          errorMessage = statusData.message || statusData.error || "视频生成失败";
-          console.log(`任务 ${task.external_task_id} 失败: ${errorMessage}`);
-        } else if (statusData.status === 5) {
-          newStatus = "queued";
-          console.log(`任务 ${task.external_task_id} 在队列中等待 (外部API)`);
-        } else if (statusData.status === 10) {
-          newStatus = "processing";
-          console.log(`任务 ${task.external_task_id} 正在处理中 (外部API)`);
         } else {
-          console.log(`无法识别任务 ${task.external_task_id} 的状态:`, 
-            JSON.stringify(statusData).substring(0, 200));
+          // 记录无法解析的响应
+          console.log(`无法解析任务 ${task.external_task_id} 的状态，完整响应:`, JSON.stringify(statusData));
         }
         
         // 只有当状态有变化时才更新数据库

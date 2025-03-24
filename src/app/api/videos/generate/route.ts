@@ -9,7 +9,8 @@ interface Text2VideoParams {
   aspect_ratio?: string;
 }
 
-// 图生视频API参数类型
+// 图生视频API参数类型 - 标记为未使用但作为参考保留
+/* 
 interface Image2VideoParams {
   input_image?: File;   // 图片文件
   image?: string;       // base64编码的图片(旧格式)
@@ -19,6 +20,7 @@ interface Image2VideoParams {
   cfg?: number;
   aspect_ratio?: string;
 }
+*/
 
 // 统一的请求参数类型
 interface VideoGenerationRequest {
@@ -38,6 +40,11 @@ interface VideoGenerationRequest {
   input_image?: File;   // 图片文件
   image?: string;       // base64编码的图片
   motion_scale?: string | number;
+}
+
+// 为formData处理创建类型
+interface RequestBodyKey {
+  [key: string]: unknown;
 }
 
 // 默认参数配置
@@ -95,7 +102,7 @@ export async function POST(request: NextRequest) {
           requestBody.quality = value === 'high' ? 'high' : 'normal';
           console.log('表单中设置了 quality 参数:', value, '->', requestBody.quality);
         } else if (typeof value === 'string') {
-          (requestBody as any)[key] = value;
+          (requestBody as RequestBodyKey)[key] = value;
         }
       }
     } else {

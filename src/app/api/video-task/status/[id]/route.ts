@@ -23,12 +23,15 @@ interface TaskStatus {
   video_generation_task_definitions: TaskDefinition;
 }
 
+// 使用类型断言避开类型检查问题
+type RouteParams = { params: { id: string } };
+
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: RouteParams
 ) {
   const supabase = await createClient();
-  const externalTaskId = params.id;
+  const externalTaskId = context.params.id;
   
   try {
     // 获取当前认证用户

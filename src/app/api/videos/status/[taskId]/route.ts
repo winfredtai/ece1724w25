@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProviderByModel } from "@/lib/providers";
 
+// 使用类型断言避开类型检查问题
+type RouteParams = { params: { taskId: string } };
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  context: RouteParams
 ) {
   try {
-    const { taskId } = await params;
+    // 获取路由参数中的taskId
+    const { taskId } = context.params;
     const searchParams = request.nextUrl.searchParams;
     const model = searchParams.get('model') || 'kling';
 

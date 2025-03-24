@@ -1,6 +1,14 @@
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
+// 定义结果类型
+interface UpdateResult {
+  taskId: string;
+  success: boolean;
+  newStatus?: string;
+  error?: string;
+}
+
 export async function GET() {
   const supabase = await createClient();
   
@@ -88,7 +96,9 @@ export async function GET() {
     
     // 等待所有任务检查完成
     const results = await Promise.allSettled(updatePromises);
-    const successCount = results.filter(r => r.status === 'fulfilled' && (r.value as any).success).length;
+    const successCount = results.filter(
+      r => r.status === 'fulfilled' && (r.value as UpdateResult).success
+    ).length;
     
     return NextResponse.json({ 
       success: true, 

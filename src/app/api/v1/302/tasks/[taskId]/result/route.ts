@@ -8,13 +8,16 @@ if (!apiKey || !baseUrl) {
   throw new Error("Missing required environment variables for 302 API");
 }
 
+// 使用类型断言避开类型检查问题
+type RouteParams = { params: { taskId: string } };
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  context: RouteParams
 ) {
   try {
     // 获取路由参数中的taskId
-    const { taskId } = await Promise.resolve(params);
+    const { taskId } = context.params;
     
     if (!taskId || taskId === "unknown") {
       console.log("Invalid taskId:", taskId);

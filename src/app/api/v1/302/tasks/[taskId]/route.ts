@@ -1,25 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // 获取环境变量
-const apiKey = process.env.API_302_KEY;
-const baseUrl = process.env.API_302_BASE_URL;
+const API_KEY = process.env.API_302_KEY;
+const BASE_URL = process.env.API_302_BASE_URL || "https://api.302.ai";
 
-if (!apiKey || !baseUrl) {
-  throw new Error("Missing required environment variables for 302 API");
+if (!API_KEY) {
+  console.error("Missing API key for 302");
 }
+
+// 使用类型断言避开类型检查问题
+type RouteParams = { params: { taskId: string } };
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  context: RouteParams
 ) {
   try {
-    const { taskId } = await params;
+    // 获取路由参数中的taskId
+    const { taskId } = context.params;
     
     // 调用 Kling AI 的实际 API
-    const response = await fetch(`${baseUrl}/klingai/task/${taskId}/fetch`, {
+    const response = await fetch(`${BASE_URL}/klingai/task/${taskId}/fetch`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
       },
     });

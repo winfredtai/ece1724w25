@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui";
-import { Loader2, RefreshCw, Play, Film, Video, Camera } from "lucide-react";
+import { RefreshCw, Film, Camera } from "lucide-react";
 import { VideoStatus, videoApi } from "@/lib/api";
 
 interface VideoGenerationStatusProps {
@@ -20,10 +20,6 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
   onGenerateVideo,
   isGenerateDisabled,
   isGenerating,
-  error,
-  placeholderIcon = "play",
-  placeholderTitle = "准备生成视频",
-  placeholderDescription = "填写表单并点击生成按钮开始创建您的AI视频",
   onStatusChange,
 }) => {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -33,8 +29,7 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
     coverUrl: "",
   });
   const [videoError, setVideoError] = useState(false);
-  // Track if we're actively generating a new video to avoid clearing the existing one
-  const [isActiveGeneration, setIsActiveGeneration] = useState(false);
+
   const lastTaskIdRef = useRef<string>("");
 
   // 停止所有轮询
@@ -84,7 +79,6 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
         if (status.status === 1 || status.status === -1 || status.videoUrl) {
           console.log("视频生成完成或出错，停止轮询");
           stopPolling();
-          setIsActiveGeneration(false);
         }
 
         // 更新数据库状态（可选步骤，通过调用API端点）
@@ -105,7 +99,6 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
       
       // 保存新的 taskId
       lastTaskIdRef.current = taskId;
-      setIsActiveGeneration(true);
       
       // 重置状态
       setVideoStatus({
@@ -153,7 +146,6 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
         coverUrl: "",
       });
       setVideoError(false);
-      setIsActiveGeneration(true);
     }
   }, [isGenerating]);
 

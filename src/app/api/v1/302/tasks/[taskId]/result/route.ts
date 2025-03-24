@@ -8,16 +8,21 @@ if (!apiKey || !baseUrl) {
   throw new Error("Missing required environment variables for 302 API");
 }
 
-// 使用类型断言避开类型检查问题
-type RouteParams = { params: { taskId: string } };
+// 正确定义路由参数类型
+interface RouteContext {
+  params: Promise<{
+    taskId: string;
+  }>;
+}
 
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  context: RouteContext
 ) {
   try {
-    // 获取路由参数中的taskId
-    const { taskId } = context.params;
+    // 正确获取路由参数中的taskId - 使用await (Next.js 15需要)
+    const params = await context.params;
+    const taskId = params.taskId;
     
     if (!taskId || taskId === "unknown") {
       console.log("Invalid taskId:", taskId);

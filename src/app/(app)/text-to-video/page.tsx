@@ -91,6 +91,50 @@ const TextToVideoPage: React.FC = () => {
       const id = await videoApi.generateVideo(params);
       console.log("Generated video with task ID:", id);
       setTaskId(id);
+      
+      // 将任务保存到数据库
+      if (id) {
+        try {
+          const response = await fetch('/api/video-task/save', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              external_task_id: id,
+              prompt: params.prompt,
+              negative_prompt: params.negative_prompt || '',
+              cfg: parseFloat(params.cfg),
+              aspect_ratio: params.aspect_ratio,
+              model: params.model,
+              high_quality: params.quality === 'high',
+              video_length: params.video_length,
+              task_type: 'video'
+            })
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.text();
+            console.error('保存任务到数据库失败:', errorData);
+            try {
+              // 尝试解析错误JSON
+              const errorJson = JSON.parse(errorData);
+              if (errorJson.error) {
+                console.error('错误详情:', errorJson.error);
+              }
+            } catch (parseError) {
+              // 解析失败，使用原始错误文本
+              console.error('无法解析错误详情');
+            }
+          } else {
+            console.log('成功保存任务到数据库');
+          }
+        } catch (saveError) {
+          console.error('保存任务时出错:', saveError instanceof Error ? saveError.message : String(saveError));
+          // 注意：即使保存到数据库失败，我们仍然继续显示视频生成状态
+          // 因为定时任务可能会在后续同步状态
+        }
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "请求失败，请检查网络连接";

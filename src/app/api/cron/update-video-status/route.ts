@@ -9,6 +9,30 @@ interface UpdateResult {
   error?: string;
 }
 
+// 获取访问API所需的认证令牌
+async function getAuthToken(supabase: any) {
+  try {
+    // 尝试获取系统预设的API密钥
+    const apiKey = process.env.API_SECRET_KEY;
+    if (apiKey) {
+      return apiKey;
+    }
+    
+    // 或者从数据库获取
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'api_token')
+      .single();
+      
+    if (error) throw error;
+    return data?.value || null;
+  } catch (error) {
+    console.error('获取认证令牌失败:', error);
+    return null;
+  }
+}
+
 export async function GET() {
   console.log("开始执行视频状态更新任务...");
   console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL ? "已设置" : "未设置");
@@ -27,6 +51,10 @@ export async function GET() {
       auth: { persistSession: false }
     }
   );
+  
+  // 获取认证令牌
+  const authToken = await getAuthToken(supabase);
+  console.log("认证令牌:", authToken ? "已获取" : "未设置");
   
   try {
     console.log("尝试查询待处理任务...");
@@ -73,11 +101,11 @@ export async function GET() {
       try {
         console.log(`开始检查任务 ${task.external_task_id} 的状态...`);
         
-        // 优先使用内部API查询状态
-        const apiUrl = `${publicUrl}/api/videos/status/${task.external_task_id}`;
-        console.log(`调用内部API: ${apiUrl}`);
+        // 直接调用302AI API获取状态
+        const apiUrl = `https://api.302.ai/klingai/task/${task.external_task_id}/fetch`;
+        console.log(`直接调用302AI API: ${apiUrl}`);
         
-        // 设置90秒超时，确保有足够时间获取响应
+        // 设置超时
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 90000);
         
@@ -85,22 +113,53 @@ export async function GET() {
         let statusData;
         
         try {
+          // 尝试直接从302AI获取状态
           response = await fetch(apiUrl, {
             signal: controller.signal,
-            headers: { 'Cache-Control': 'no-cache' }
+            headers: { 
+              'Cache-Control': 'no-cache',
+              // 可能需要添加302AI的认证头
+              'Authorization': process.env.API_302_TOKEN || ''
+            }
           });
           
           clearTimeout(timeoutId);
           
           if (!response.ok) {
-            throw new Error(`内部API请求失败: ${response.status}`);
+            throw new Error(`302AI API请求失败: ${response.status}`);
           }
           
           statusData = await response.json();
+          console.log(`成功获取任务 ${task.external_task_id} 的302AI响应`);
+        } catch (externalApiError) {
+          // 如果302AI API调用失败，尝试使用内部API
+          console.warn(`302AI API调用失败: ${externalApiError}，尝试使用内部API`);
+          
+          // 构建内部API URL
+          const internalApiUrl = `${publicUrl}/api/videos/status/${task.external_task_id}`;
+          console.log(`调用内部API: ${internalApiUrl}`);
+          
+          // 准备必要的headers
+          const headers: Record<string, string> = { 
+            'Cache-Control': 'no-cache'
+          };
+          
+          // 添加认证header (如果有token)
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+          
+          // 调用内部API
+          const internalResponse = await fetch(internalApiUrl, {
+            headers
+          });
+          
+          if (!internalResponse.ok) {
+            throw new Error(`内部API请求失败: ${internalResponse.status}`);
+          }
+          
+          statusData = await internalResponse.json();
           console.log(`成功获取任务 ${task.external_task_id} 的内部API响应`);
-        } catch (apiError) {
-          console.error(`内部API调用失败: ${apiError}`);
-          throw apiError; // 内部API失败就直接失败，不再尝试外部API
         }
         
         console.log(`获取到任务 ${task.external_task_id} 的API响应:`, 
@@ -111,8 +170,9 @@ export async function GET() {
         let thumbnailUrl = null;
         let errorMessage = null;
         
-        // 解析内部API的响应格式
+        // 解析API响应格式 - 处理两种可能的API响应结构
         if (statusData.success && statusData.data?.data) {
+          // 处理内部API格式 (/api/videos/status/)
           const apiData = statusData.data.data;
           
           console.log(`任务 ${task.external_task_id} 状态码: ${apiData.status}`);
@@ -139,6 +199,34 @@ export async function GET() {
             console.log(`任务 ${task.external_task_id} 正在处理中`);
           } else {
             console.log(`任务 ${task.external_task_id} 状态未知: ${apiData.status}`);
+          }
+        } else if (statusData.result === 1 && statusData.data) {
+          // 处理302AI API格式 (/klingai/task/)
+          const apiData = statusData.data;
+          
+          console.log(`302AI 任务 ${task.external_task_id} 状态: ${apiData.status || 'unknown'}`);
+          
+          if (apiData.status === 99 && apiData.resource) {
+            // 已完成
+            newStatus = "completed";
+            resultUrl = apiData.resource || null;
+            thumbnailUrl = apiData.cover || null;
+            console.log(`任务 ${task.external_task_id} 已完成 (302AI)，视频URL: ${resultUrl?.substring(0, 50)}...`);
+          } else if (apiData.status === -1) {
+            // 失败
+            newStatus = "failed";
+            errorMessage = apiData.message || "视频生成失败";
+            console.log(`任务 ${task.external_task_id} 失败 (302AI): ${errorMessage}`);
+          } else if (apiData.status === 5 || (apiData.queuingEtaTime && apiData.queuingEtaTime > 0)) {
+            // 队列中
+            newStatus = "queued";
+            console.log(`任务 ${task.external_task_id} 在队列中等待 (302AI)`);
+          } else if (apiData.status === 10 || (apiData.etaTime && apiData.etaTime > 0)) {
+            // 处理中
+            newStatus = "processing";
+            console.log(`任务 ${task.external_task_id} 正在处理中 (302AI)`);
+          } else {
+            console.log(`302AI 任务 ${task.external_task_id} 状态无法识别`);
           }
         } else {
           // 记录无法解析的响应

@@ -196,6 +196,37 @@ const ImageToVideoPage: React.FC = () => {
       // You'll need to extend your API to handle image-to-video generation
       const id = await videoApi.generateImageToVideo(formData);
       setTaskId(id);
+      
+      // 新增：将任务保存到数据库
+      if (id) {
+        try {
+          const response = await fetch('/api/video-task/save', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              external_task_id: id,
+              prompt: params.prompt,
+              negative_prompt: params.negative_prompt || '',
+              cfg: parseFloat(params.cfg),
+              aspect_ratio: params.aspect_ratio,
+              model: params.model,
+              high_quality: params.quality === 'high',
+              video_length: params.video_length,
+              task_type: 'video'
+            })
+          });
+          
+          if (!response.ok) {
+            console.error('保存任务到数据库失败:', await response.text());
+          }
+        } catch (saveError) {
+          console.error('保存任务时出错:', saveError);
+          // 注意：即使保存到数据库失败，我们仍然继续显示视频生成状态
+          // 因为定时任务可能会在后续同步状态
+        }
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "请求失败，请检查网络连接";

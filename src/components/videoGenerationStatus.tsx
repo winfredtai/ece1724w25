@@ -63,60 +63,45 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
     }
   };
 
-  // 检查视频状态
+  // 检查视频状态 - 简化版
   const checkVideoStatus = useCallback(
     async (id: string) => {
       if (!id) return;
-      // 如果taskId变了，但函数内还在使用旧的id，直接返回
-      if (id !== taskId) {
-        console.log(`停止对旧任务 ${id} 的轮询，当前任务为: ${taskId}`);
-        return;
-      }
       
       try {
+        // 首先从API获取最新状态
         const status = await videoApi.getVideoStatus(id);
-        
-        // 在完成或有视频URL时记录日志
-        if (status.status === 1 || status.videoUrl) {
-          console.log("视频状态更新:", status);
-        }
         
         // 设置新状态
         setVideoStatus(status);
 
-        // 如果有视频URL且状态为完成，立即通知父组件
-        if (status.videoUrl && status.status === 1 && onStatusChange) {
-          console.log("发现视频URL:", status.videoUrl);
-          onStatusChange(status.status, status.videoUrl);
-        } 
-        // 如果状态是错误或其他状态，仍然通知父组件
-        else if (!status.videoUrl && onStatusChange) {
-          onStatusChange(status.status, status.videoUrl);
+        // 如果状态发生变化，通知父组件
+        if (onStatusChange) {
+          onStatusChange(status.status, status.videoUrl || "");
         }
 
         // 如果视频已生成完成或出错，停止轮询
-        if (
-          status.status === 1 || // 完成状态 (1)
-          status.status === -1 || // 错误状态 (-1)
-          (status.videoUrl && status.videoUrl !== "")
-        ) {
+        if (status.status === 1 || status.status === -1 || status.videoUrl) {
           console.log("视频生成完成或出错，停止轮询");
           stopPolling();
+          setIsActiveGeneration(false);
         }
+
+        // 更新数据库状态（可选步骤，通过调用API端点）
+        // 注意：这里依赖于定时任务来更新数据库，不再在前端做更新
       } catch (error) {
         console.error("检查视频状态出错:", error);
-        stopPolling();
+        // 轮询出错时不要停止，继续尝试，除非视频生成过程已结束
       }
     },
-    [stopPolling, onStatusChange, taskId]
+    [stopPolling, onStatusChange]
   );
 
   // 当 taskId 变化时重新开始轮询
   useEffect(() => {
-    // 只有当 taskId 改变且是一个有效值时，才重新设置视频状态和开始轮询
-    if (taskId && taskId !== '' && taskId !== lastTaskIdRef.current) {
-      // 记录日志
-      console.log("任务ID变化，重置视频状态:", taskId);
+    // 只有当 taskId 存在且有效时，才开始轮询
+    if (taskId && taskId !== '') {
+      console.log("任务ID变化，开始轮询:", taskId);
       
       // 保存新的 taskId
       lastTaskIdRef.current = taskId;
@@ -133,52 +118,21 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
       // 清除之前的轮询
       stopPolling();
       
-      // 先立即检查一次状态
-      const checkStatus = async () => {
-        try {
-          const status = await videoApi.getVideoStatus(taskId);
-          
-          // 只在有实际进展时记录日志
-          if (status.status !== 0 || status.videoUrl) {
-            console.log("初始状态检查结果:", status);
-          }
-          
-          setVideoStatus(status);
-          
-          // 如果有视频URL，立即通知父组件
-          if (status.videoUrl && status.status === 1 && onStatusChange) {
-            console.log("初始检查发现视频URL:", status.videoUrl);
-            onStatusChange(status.status, status.videoUrl);
-          }
-          
-          // 如果状态已完成或失败或有视频URL，不需要开始轮询
-          if (status.status === 1 || status.status === -1 || status.videoUrl) {
-            setIsActiveGeneration(false);
-            return;
-          }
-          
-          // 如果状态未完成，开始轮询
-          console.log("开始轮询任务状态:", taskId);
-          pollingIntervalRef.current = setInterval(() => {
-            checkVideoStatus(taskId);
-          }, 8000); // 每8秒检查一次
-        } catch (error) {
-          console.error("初始状态检查失败:", error);
-          setIsActiveGeneration(false);
-        }
-      };
+      // 立即检查一次状态
+      checkVideoStatus(taskId);
       
-      checkStatus();
+      // 设置轮询间隔（每8秒检查一次）
+      pollingIntervalRef.current = setInterval(() => {
+        checkVideoStatus(taskId);
+      }, 8000);
     } else if (!taskId) {
-      // 如果taskId为空，不要重置视频状态，除非是主动点击了生成按钮
-      if (isActiveGeneration) {
-        setVideoStatus({
-          status: 0,
-          videoUrl: "",
-          coverUrl: "",
-        });
-        setVideoError(false);
-      }
+      // 如果taskId为空，重置状态并停止轮询
+      setVideoStatus({
+        status: 0,
+        videoUrl: "",
+        coverUrl: "",
+      });
+      setVideoError(false);
       stopPolling();
     }
     
@@ -186,11 +140,11 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
     return () => {
       stopPolling();
     };
-  }, [taskId, checkVideoStatus, stopPolling, onStatusChange, isActiveGeneration]);
+  }, [taskId, checkVideoStatus, stopPolling]);
 
-  // 当开始生成新视频时，重置状态并停止轮询
+  // 当开始生成新视频时，重置状态
   useEffect(() => {
-    if (isGenerating && !isActiveGeneration) {
+    if (isGenerating) {
       console.log("开始生成新视频，重置状态");
       // 重置视频状态
       setVideoStatus({
@@ -200,36 +154,16 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
       });
       setVideoError(false);
       setIsActiveGeneration(true);
-      
-      // 立即停止所有轮询
-      stopPolling();
-    } else if (!isGenerating && isActiveGeneration && videoStatus.videoUrl) {
-      // 视频生成完成
-      setIsActiveGeneration(false);
     }
-  }, [isGenerating, stopPolling, isActiveGeneration, videoStatus.videoUrl]);
-
-  // 视频URL改变时，确保停止轮询
-  useEffect(() => {
-    if (videoStatus.videoUrl) {
-      console.log("视频URL变化，停止轮询:", videoStatus.videoUrl.slice(0, 30) + "...");
-      stopPolling();
-      
-      // 视频URL变化时，也通知父组件
-      if (onStatusChange && videoStatus.status === 1) {
-        onStatusChange(videoStatus.status, videoStatus.videoUrl);
-        setIsActiveGeneration(false);
-      }
-    }
-  }, [videoStatus.videoUrl, videoStatus.status, stopPolling, onStatusChange]);
+  }, [isGenerating]);
 
   // 立即检查一次视频状态
   const handleRefreshStatus = useCallback(async () => {
-    if (taskId && !isGenerating) {
+    if (taskId) {
       console.log("手动刷新任务状态:", taskId);
       await checkVideoStatus(taskId);
     }
-  }, [taskId, checkVideoStatus, isGenerating]);
+  }, [taskId, checkVideoStatus]);
 
   // 当视频加载失败时尝试重新加载
   const handleRetryVideo = useCallback(() => {
@@ -242,7 +176,7 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
       <div className="w-full">
         {isGenerating || videoStatus.status !== 0 || videoStatus.videoUrl ? (
           <div className="w-full h-full flex flex-col items-center justify-center">
-            {videoStatus.videoUrl && !videoError && !isActiveGeneration ? (
+            {videoStatus.videoUrl && !videoError ? (
               <div className="w-full">
                 <h3 className="text-xl font-medium mb-4 text-center">生成结果</h3>
                 <video
@@ -269,57 +203,45 @@ const VideoGenerationStatus: React.FC<VideoGenerationStatusProps> = ({
                     }
                   }}
                 ></video>
-                <div className="mt-4 flex justify-center space-x-4">
-                  <a
-                    href={videoStatus.videoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary flex items-center hover:underline"
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onGenerateVideo}
+                    disabled={isGenerateDisabled}
                   >
-                    <Video className="h-4 w-4 mr-1" />
-                    在新窗口打开
-                  </a>
-                  <a
-                    href={videoStatus.videoUrl}
-                    download
-                    className="text-primary flex items-center hover:underline"
-                  >
-                    <Video className="h-4 w-4 mr-1" />
-                    下载视频
-                  </a>
-                  {videoStatus.coverUrl && (
-                    <a
-                      href={videoStatus.coverUrl}
-                      download
-                      className="text-primary flex items-center hover:underline"
-                    >
-                      <Camera className="h-4 w-4 mr-1" />
-                      下载封面
-                    </a>
-                  )}
+                    生成新视频
+                  </Button>
                 </div>
               </div>
-            ) : videoError && videoStatus.videoUrl && !isActiveGeneration ? (
+            ) : videoError ? (
               <div className="text-center">
-                <div className="relative flex items-center justify-center w-24 h-24 rounded-full bg-red-100 mb-4 mx-auto">
-                  <Film className="h-10 w-10 text-red-500" />
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-red-500/20 to-orange-500/20 blur-xl"></div>
+                  <div className="relative flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-r from-red-600 to-orange-600 mb-4 mx-auto">
+                    <Film className="h-10 w-10 text-white" />
+                  </div>
                 </div>
-                <h3 className="text-xl font-medium mb-2">视频加载失败</h3>
+                <h3 className="text-xl font-medium mb-2">加载视频失败</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  无法加载视频，请尝试刷新或直接访问链接
+                  无法加载视频，请尝试刷新页面或重新生成
                 </p>
-                <div className="flex justify-center space-x-4">
-                  <Button variant="outline" size="sm" onClick={handleRetryVideo}>
-                    重试
-                  </Button>
-                  <a
-                    href={videoStatus.videoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-3 py-1.5 text-sm border border-border rounded-md hover:bg-accent"
+                <div className="flex justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetryVideo}
                   >
-                    直接访问
-                  </a>
+                    重试加载
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={onGenerateVideo}
+                    disabled={isGenerateDisabled}
+                  >
+                    重新生成
+                  </Button>
                 </div>
               </div>
             ) : (

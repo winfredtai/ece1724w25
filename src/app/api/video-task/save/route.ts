@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "缺少external_task_id" }, { status: 400 });
     }
     
-    if (!taskData.prompt) {
+    if (!taskData.prompt && taskData.task_type !== 'img2video') {
       return NextResponse.json({ success: false, error: "缺少prompt" }, { status: 400 });
     }
     
@@ -38,12 +38,19 @@ export async function POST(request: Request) {
       console.log("使用管理员客户端，将绕过RLS");
     }
     
+    // 为图像转视频任务处理start_img_path
+    let startImgPath = taskData.start_img_path || "";
+    if (taskData.task_type === 'img2video' && !startImgPath) {
+      // 对于图像转视频，使用占位符值，因为数据库必填，但我们实际没有路径
+      startImgPath = "img2video_placeholder";
+    }
+    
     // 1. 创建任务定义
     const { data: taskDef, error: taskDefError } = await supabase
       .from("video_generation_task_definitions")
       .insert({
         user_id: user.id,
-        prompt: taskData.prompt,
+        prompt: taskData.prompt || "", // 允许空提示词，图像转视频可能不需要
         negative_prompt: taskData.negative_prompt || "",
         cfg: typeof taskData.cfg === 'number' ? taskData.cfg : parseFloat(taskData.cfg || "0.5"),
         aspect_ratio: taskData.aspect_ratio || "1:1",
@@ -51,7 +58,7 @@ export async function POST(request: Request) {
         high_quality: !!taskData.high_quality,
         task_type: taskData.task_type || "video",
         credits: taskData.high_quality ? 2 : 1, // 根据质量设置积分消耗
-        start_img_path: taskData.start_img_path || "", // 使用空字符串代替null
+        start_img_path: startImgPath, // 使用处理过的值
         end_img_path: taskData.end_img_path || ""  // 使用空字符串代替null
       })
       .select("id")

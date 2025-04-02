@@ -8,6 +8,14 @@ const nextConfig = {
     // 同时忽略ESLint错误，避免构建失败
     ignoreDuringBuilds: true,
   },
+  // 禁用 experimental features
+  experimental: {
+    turbo: false,
+  },
+  // 确保使用 webpack
+  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+    return config;
+  },
 }
 
 module.exports = nextConfig 

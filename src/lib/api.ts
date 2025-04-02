@@ -147,7 +147,7 @@ export const videoApi = {
     }
   },
 
-  // 上传图片生成视频
+  // 上传图片生成视频 (Runway API - 旧版本)
   async generateImageToVideo(formData: FormData): Promise<string> {
     try {
       const response = await fetch(`${API_BASE_URL}/302/runway/submit`, {
@@ -164,6 +164,59 @@ export const videoApi = {
       return data.data.task.id;
     } catch (error) {
       console.error("Error in generateImageToVideo:", error);
+      throw error;
+    }
+  },
+  
+  // 图片转视频 (使用统一接口)
+  async imageToVideo(formData: FormData): Promise<string> {
+    try {
+      // 添加超时控制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/302/unified/img2video`, {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
+        
+        // 清除超时
+        clearTimeout(timeoutId);
+
+        const data = await response.json();
+        
+        // 检查响应是否成功
+        if (!data.success) {
+          console.error("图片转视频失败:", data.error, data.details || "");
+          throw new Error(data.error || "图片转视频失败");
+        }
+        
+        if (!data.data || !data.data.task || !data.data.task.id) {
+          console.error("无效的响应格式:", data);
+          throw new Error("无效的响应格式: 未找到任务ID");
+        }
+        
+        return data.data.task.id;
+      } catch (fetchError: unknown) {
+        // 清除超时
+        clearTimeout(timeoutId);
+        
+        if (fetchError instanceof Error) {
+          if (fetchError.name === "AbortError") {
+            console.error("请求超时：无法连接到视频生成服务，请检查网络连接");
+            throw new Error("连接超时：无法连接到视频生成服务，请检查网络连接并重试");
+          } else {
+            console.error("网络错误:", fetchError);
+            throw new Error(`网络错误: ${fetchError.message}`);
+          }
+        }
+        
+        throw fetchError;
+      }
+    } catch (error) {
+      console.error("图片转视频错误:", error);
       throw error;
     }
   },

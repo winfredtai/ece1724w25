@@ -1,2 +1,8 @@
 {
+  "crons": [
+    {
+      "path": "/api/check-video-status",
+      "schedule": "* * * * *"
+    }
+  ]
 }

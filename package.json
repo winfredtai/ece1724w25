@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
+    "dev": "next dev",
+    "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=3072\" next build",
     "start": "next start",
     "lint": "next lint && prettier --write ."
   },
@@ -47,6 +47,7 @@
     "@typescript-eslint/eslint-plugin": "^8.26.0",
     "@typescript-eslint/parser": "^8.26.0",
     "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
     "depcheck": "^1.4.7",
     "dotenv": "^16.4.7",
     "eslint": "^9",

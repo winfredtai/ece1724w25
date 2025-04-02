@@ -77,9 +77,7 @@ const ProfilePage: React.FC = () => {
 
   const [userCreations, setUserCreations] = useState<UserCreation[]>([]);
   const [userStats, setUserStats] = useState<UserStats>({} as UserStats);
-  const [subscription, setSubscription] = useState<UserSubscription | null>(
-    null,
-  );
+  const [userCredits, setUserCredits] = useState<UserCredits | null>(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -96,7 +94,7 @@ const ProfilePage: React.FC = () => {
   // Function declarations with useCallback
   const fetchUserCreations = useCallback(async () => {
     try {
-      const response = await fetch("/user/fetch-creation");
+      const response = await fetch("/api/user/fetch-creation");
       if (!response.ok) {
         throw new Error(`Error fetching creations: ${response.statusText}`);
       }
@@ -140,47 +138,31 @@ const ProfilePage: React.FC = () => {
     }
   }, []);
 
-  const fetchUserSubscription = useCallback(async () => {
-    try {
-      const response = await fetch("/user/fetch-subscription");
-      const data = await response.json();
-      setSubscription(data as UserSubscription | null);
-    } catch (error) {
-      console.error("获取用户订阅失败:", error);
-    }
-  }, []);
-
   const fetchUserCredits = useCallback(async () => {
     try {
-      const response = await fetch("/user/fetch-credit");
-      const data = await response.json();
-      const credits = data as UserCredits | null;
-      if (credits) {
-        setUserStats((prev) => ({
-          ...prev,
-          creditsBalance: credits.credits_balance,
-          usagePercentage:
-            credits.total_credits_purchased > 0
-              ? Math.round(
-                  (credits.total_credits_used /
-                    credits.total_credits_purchased) *
-                    100,
-                )
-              : 0,
-        }));
+      console.log('Fetching user credits...');
+      const response = await fetch("/api/user/fetch-credit");
+      console.log('Credits API response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching credits: ${response.statusText}`);
       }
+      
+      const data = await response.json();
+      console.log('Received credits data:', data);
+      setUserCredits(data);
     } catch (error) {
-      console.error("获取用户额度失败:", error);
+      console.error("获取用户积分失败:", error);
     }
   }, []);
 
   useEffect(() => {
     if (user) {
+      console.log('User authenticated, fetching data...');
       fetchUserCreations();
-      fetchUserSubscription();
       fetchUserCredits();
     }
-  }, [user, fetchUserCreations, fetchUserSubscription, fetchUserCredits]);
+  }, [user, fetchUserCreations, fetchUserCredits]);
 
   const handleDeleteCreation = async (id: number) => {
     try {
@@ -235,70 +217,6 @@ const ProfilePage: React.FC = () => {
       console.error("删除创作失败:", error);
     }
   };
-
-  //   // Mock data for user creations
-  //   const [userCreations, setUserCreations] = useState<UserCreation[]>([
-  //     {
-  //       id: 1,
-  //       type: "video",
-  //       title: "太空中飞行的宇航员",
-  //       description: "一个宇航员在星空中漫游，周围是壮丽的星云和行星",
-  //       thumbnailUrl: "/images/creations/space.jpg",
-  //       url: "https://example.com/video1.mp4",
-  //       createdAt: "2023-04-15T10:30:00Z",
-  //       status: "completed",
-  //     },
-  //     {
-  //       id: "2",
-  //       type: "video",
-  //       title: "海底世界探索",
-  //       description: "深海的神秘生物和珊瑚礁，色彩斑斓的鱼群穿梭其中",
-  //       thumbnailUrl: "/images/creations/underwater.jpg",
-  //       url: "https://example.com/video2.mp4",
-  //       createdAt: "2023-04-10T14:20:00Z",
-  //       status: "completed",
-  //     },
-  //     {
-  //       id: "3",
-  //       type: "image",
-  //       title: "未来城市全景",
-  //       description: "2150年的未来城市，高楼林立，飞行汽车穿梭其中",
-  //       thumbnailUrl: "/images/creations/future-city.jpg",
-  //       url: "https://example.com/image1.jpg",
-  //       createdAt: "2023-04-05T09:15:00Z",
-  //       status: "completed",
-  //     },
-  //     {
-  //       id: "4",
-  //       type: "video",
-  //       title: "正在生成中...",
-  //       description: "森林中的神秘小屋，周围是雾气缭绕的古树",
-  //       thumbnailUrl: "/images/creations/forest.jpg",
-  //       url: "",
-  //       createdAt: "2023-04-20T16:45:00Z",
-  //       status: "processing",
-  //     },
-  //   ]);
-
-  //   // Mock user stats
-  //   const [userStats] = useState<UserStats>({
-  //     totalCreations: 14,
-  //     completedCreations: 12,
-  //     processingCreations: 1,
-  //     failedCreations: 1,
-  //     videoCount: 10,
-  //     imageCount: 4,
-  //     usagePercentage: 65,
-  //   });
-
-  //   // Mock subscription data
-  //   const [subscription] = useState<UserSubscription>({
-  //     plan: "basic",
-  //     startDate: "2023-03-01T00:00:00Z",
-  //     nextBillingDate: "2023-05-01T00:00:00Z",
-  //     creditsTotal: 100,
-  //     creditsUsed: 65,
-  //   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -362,9 +280,7 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const planInfo = subscription
-    ? getSubscriptionPlanInfo(subscription.plan_type)
-    : getSubscriptionPlanInfo("free");
+  const planInfo = getSubscriptionPlanInfo("free");
 
   // 获取用户展示信息
   const getUserInitials = () => {
@@ -388,7 +304,7 @@ const ProfilePage: React.FC = () => {
       {/* Hero Profile Header */}
       <div className="rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 p-1 mb-8">
         <div className="bg-background rounded-lg p-6 md:p-8 flex flex-col md:flex-row items-center justify-between">
-          <div className="flex flex-col md:flex-row items-center mb-4 md:mb-0">
+          <div className="flex flex-col md:flex-row items-center">
             <Avatar className="h-24 w-24 md:mr-6 mb-4 md:mb-0 border-4 border-background shadow-lg">
               <AvatarImage src={getAvatarUrl()} />
               <AvatarFallback className="bg-primary/10 text-primary text-2xl">
@@ -405,16 +321,16 @@ const ProfilePage: React.FC = () => {
               <div className="flex items-center justify-center md:justify-start space-x-2">
                 <Badge variant="outline" className="flex items-center">
                   <Users className="h-3 w-3 mr-1" />
-                  普通用户
+                  用户
                 </Badge>
-                <Badge className={`flex items-center ${planInfo.color}`}>
+                <Badge className="flex items-center bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20">
                   <Crown className="h-3 w-3 mr-1" />
-                  {planInfo.name}
+                  {userCredits?.level || "普通用户"}
                 </Badge>
               </div>
             </div>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 mt-4 md:mt-0">
             <Button
               size="sm"
               variant="outline"
@@ -483,23 +399,28 @@ const ProfilePage: React.FC = () => {
                   </Button>
                 </div>
               ) : (
-                <>
+                <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-medium mb-1">账户创建时间</h3>
-                    <div className="text-sm flex items-center">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      {formatDate(user?.created_at || "")}
-                    </div>
+                    <h3 className="text-sm font-medium mb-1">用户名</h3>
+                    <p className="text-sm">
+                      {user?.user_metadata?.full_name ||
+                        user?.user_metadata?.name ||
+                        "-"}
+                    </p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium mb-1">最近登录时间</h3>
-                    <div className="text-sm flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {formatDate(user?.user_metadata?.last_sign_in_at)}{" "}
-                      {formatTime(user?.user_metadata?.last_sign_in_at)}
-                    </div>
+                    <h3 className="text-sm font-medium mb-1">邮箱</h3>
+                    <p className="text-sm">{user?.email || "-"}</p>
                   </div>
-                </>
+                  <div>
+                    <h3 className="text-sm font-medium mb-1">注册时间</h3>
+                    <p className="text-sm">
+                      {user?.created_at
+                        ? new Date(user.created_at).toLocaleDateString()
+                        : "-"}
+                    </p>
+                  </div>
+                </div>
               )}
             </CardContent>
             <CardFooter>
@@ -514,31 +435,30 @@ const ProfilePage: React.FC = () => {
             </CardFooter>
           </Card>
 
-          {/* Subscription Card */}
+          {/* Credits Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Crown className="h-5 w-5 mr-2 text-yellow-500" />
-                我的订阅
+                我的积分
               </CardTitle>
               <CardDescription>
-                当前套餐: <span className="font-medium">{planInfo.name}</span>
+                当前等级: <span className="font-medium">{userCredits?.level || "普通用户"}</span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-sm">额度使用情况</span>
+                  <span className="text-sm">积分余额</span>
                   <span className="text-sm font-medium">
-                    {subscription?.credits_per_period || 0}/
-                    {subscription?.credits_per_period || 0}
+                    {userCredits?.credits_balance || 0}
                   </span>
                 </div>
                 <Progress
                   value={
-                    subscription
-                      ? (subscription.credits_per_period /
-                          subscription.credits_per_period) *
+                    userCredits?.total_credits_purchased
+                      ? (userCredits.total_credits_used /
+                          userCredits.total_credits_purchased) *
                         100
                       : 0
                   }
@@ -546,23 +466,25 @@ const ProfilePage: React.FC = () => {
                 />
               </div>
               <div>
-                <h3 className="text-sm font-medium mb-1">订阅开始日期</h3>
-                <p className="text-sm">
-                  {subscription ? formatDate(subscription.start_date) : "-"}
-                </p>
+                <h3 className="text-sm font-medium mb-1">总购买积分</h3>
+                <p className="text-sm">{userCredits?.total_credits_purchased || 0}</p>
               </div>
               <div>
-                <h3 className="text-sm font-medium mb-1">下次续费日期</h3>
+                <h3 className="text-sm font-medium mb-1">已使用积分</h3>
+                <p className="text-sm">{userCredits?.total_credits_used || 0}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium mb-1">最后购买时间</h3>
                 <p className="text-sm">
-                  {subscription
-                    ? formatDate(subscription.next_renewal_date)
+                  {userCredits?.last_purchase_date
+                    ? new Date(userCredits.last_purchase_date).toLocaleDateString()
                     : "-"}
                 </p>
               </div>
             </CardContent>
             <CardFooter>
               <Button variant="outline" size="sm" className="w-full">
-                升级套餐
+                购买积分
               </Button>
             </CardFooter>
           </Card>

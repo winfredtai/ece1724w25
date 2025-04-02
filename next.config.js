@@ -10,7 +10,13 @@ const nextConfig = {
   },
   // 禁用 experimental features
   experimental: {
-    turbo: false,
+    turbo: {
+      enabled: true
+    }
+  },
+  // 配置允许的图片域名
+  images: {
+    domains: ['file.302.ai'],
   },
   // 确保使用 webpack
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {

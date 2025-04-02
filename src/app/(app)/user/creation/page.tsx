@@ -44,6 +44,7 @@ import {
   Loader2,
   Filter,
   X,
+  Play,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -58,6 +59,7 @@ interface UserCreation {
   createdAt: string;
   status: "completed" | "processing" | "failed";
   starred?: boolean;
+  prompt?: string;
 }
 
 const MyCreationsPage = () => {
@@ -76,6 +78,7 @@ const MyCreationsPage = () => {
   // Dialog states
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [selectedCreation, setSelectedCreation] = useState<UserCreation | null>(
     null,
   );
@@ -97,10 +100,25 @@ const MyCreationsPage = () => {
 
         if (isAuthenticated) {
           // User is authenticated, fetch user creations
-          const response = await fetch("/user/fetch-creation");
+          const response = await fetch("/api/user/fetch-creation");
           const { creations } = await response.json();
-          setCreations(creations);
-          setFilteredCreations(creations);
+          
+          // Transform the API response to match our UserCreation interface
+          const transformedCreations = creations.map((creation: any) => ({
+            id: creation.id?.toString() || "",
+            type: creation.task_type === "video" ? "video" : "image",
+            title: creation.prompt || "Untitled",
+            description: creation.prompt || "",
+            thumbnailUrl: creation.thumbnail_url || "/images/creations/placeholder.jpg",
+            url: creation.result_url || "",
+            createdAt: creation.created_at || new Date().toISOString(),
+            status: creation.status || "processing",
+            starred: false, // We can implement this feature later
+            prompt: creation.prompt || ""
+          }));
+
+          setCreations(transformedCreations);
+          setFilteredCreations(transformedCreations);
         } else if (!authLoading) {
           // Redirect only when authentication status is loaded and user is not authenticated
           router.push("/login");
@@ -305,6 +323,11 @@ const MyCreationsPage = () => {
     alert(`Publishing "${creation.title}". This is a mock implementation.`);
   };
 
+  const handlePreview = (creation: UserCreation) => {
+    setSelectedCreation(creation);
+    setPreviewDialogOpen(true);
+  };
+
   // 如果正在加载，显示加载状态
   if (isLoading) {
     return (
@@ -385,7 +408,10 @@ const MyCreationsPage = () => {
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {getPaginatedCreations(tab).map((creation) => (
                     <Card key={creation.id} className="overflow-hidden">
-                      <div className="relative aspect-video">
+                      <div 
+                        className="relative aspect-video cursor-pointer" 
+                        onClick={() => handlePreview(creation)}
+                      >
                         <Image
                           src={creation.thumbnailUrl}
                           alt={creation.title}
@@ -423,8 +449,16 @@ const MyCreationsPage = () => {
                             </Badge>
                           )}
                         </div>
+                        {creation.status === "completed" && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+                            <Play className="w-12 h-12 text-white" />
+                          </div>
+                        )}
                         <button
-                          onClick={() => handleToggleStar(creation)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleStar(creation);
+                          }}
                           className="absolute left-2 top-2 rounded-full bg-black/50 p-1.5 text-white transition-colors hover:bg-black/70"
                         >
                           {creation.starred ? (
@@ -466,19 +500,28 @@ const MyCreationsPage = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                onClick={() => handleRename(creation)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRename(creation);
+                                }}
                               >
                                 <Edit className="mr-2 h-4 w-4" />
                                 重命名
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => handleDownload(creation)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownload(creation);
+                                }}
                               >
                                 <Download className="mr-2 h-4 w-4" />
                                 下载
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={() => handlePublish(creation)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePublish(creation);
+                                }}
                               >
                                 <Share2 className="mr-2 h-4 w-4" />
                                 发布
@@ -486,7 +529,10 @@ const MyCreationsPage = () => {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-red-500 focus:text-red-500"
-                                onClick={() => handleDelete(creation)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(creation);
+                                }}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 删除
@@ -495,18 +541,15 @@ const MyCreationsPage = () => {
                           </DropdownMenu>
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">
-                          {creation.description}
+                          {creation.prompt || creation.description}
                         </p>
-                        <p className="mt-2 text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground mt-2">
                           创建于{" "}
-                          {new Date(creation.createdAt).toLocaleDateString(
-                            "zh-CN",
-                            {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            },
-                          )}
+                          {new Date(creation.createdAt).toLocaleDateString("zh-CN", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
                         </p>
                       </CardContent>
                     </Card>
@@ -589,6 +632,60 @@ const MyCreationsPage = () => {
             <Button variant="destructive" onClick={handleConfirmDelete}>
               删除
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>{selectedCreation?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {selectedCreation?.type === "video" ? (
+              <video
+                src={selectedCreation.url}
+                controls
+                className="w-full rounded-lg"
+                autoPlay
+                playsInline
+              />
+            ) : (
+              <Image
+                src={selectedCreation?.thumbnailUrl || ""}
+                alt={selectedCreation?.title || ""}
+                width={800}
+                height={450}
+                className="w-full rounded-lg"
+              />
+            )}
+          </div>
+          <div className="mt-4">
+            <p className="text-sm text-muted-foreground">{selectedCreation?.prompt}</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              创建于{" "}
+              {selectedCreation?.createdAt
+                ? new Date(selectedCreation.createdAt).toLocaleDateString("zh-CN", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })
+                : ""}
+            </p>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">关闭</Button>
+            </DialogClose>
+            {selectedCreation?.status === "completed" && (
+              <Button asChild>
+                <a href={selectedCreation.url} download>
+                  <Download className="w-4 h-4 mr-2" />
+                  下载
+                </a>
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

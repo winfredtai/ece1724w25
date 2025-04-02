@@ -153,28 +153,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Login with Google function
   const loginWithGoogle = async () => {
     try {
-      // Save current path for redirection after login
-      savePreviousPath();
-
-      // Specify redirect URL, ensuring correct callback handling
-      let redirectUrl = `${window.location.origin}/auth/callback`;
-      if (getPreviousPath()) {
-        redirectUrl += `?next=${getPreviousPath()}`;
-      }
-
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
+        provider: 'google',
         options: {
-          redirectTo: redirectUrl,
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
-            access_type: "offline",
-            prompt: "consent",
+            access_type: 'offline',
+            prompt: 'consent',
           },
         },
       });
-
-      return { error };
+      
+      if (error) throw error;
+      return { error: null };
     } catch (error) {
+      console.error('Google login error:', error);
       return { error: error as Error };
     }
   };

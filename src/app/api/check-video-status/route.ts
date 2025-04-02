@@ -24,7 +24,13 @@ function mapStatus(status: number): string {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  // 验证请求是否来自 Vercel Cron
+  const authHeader = request.headers.get('x-vercel-cron');
+  if (process.env.VERCEL && !authHeader) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const supabase = await createClient();
 

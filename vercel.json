@@ -2,10 +2,7 @@
   "crons": [
     {
       "path": "/api/check-video-status",
-      "schedule": "* * * * *",
-      "headers": {
-        "authorization": "Bearer ${CRON_SECRET}"
-      }
+      "schedule": "* * * * *"
     }
   ]
 }

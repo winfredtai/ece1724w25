@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     console.log('302.ai API response:', JSON.stringify(data, null, 2));
 
     // Create task status record
-    const externalTaskId = data.id;
+    const externalTaskId = data.data?.task?.id;
     console.log('Attempting to create task status with:', {
       task_id: taskDef.id,
       external_task_id: externalTaskId,
@@ -126,10 +126,27 @@ export async function POST(request: Request) {
 
     if (statusError) {
       console.error('Error creating task status:', statusError);
-      // Continue with the response even if status creation fails
-      // We'll handle this case in monitoring
+      // 如果是超时错误，尝试再次查询确认是否已创建
+      if (statusError.code === '57014') {
+        const { data: existingStatus, error: queryError } = await supabase
+          .from('video_generation_task_statuses')
+          .select('*')
+          .eq('task_id', taskDef.id)
+          .single();
+
+        if (!queryError && existingStatus) {
+          console.log('Found existing task status after timeout:', existingStatus);
+          return NextResponse.json({
+            ...data,
+            taskId: taskDef.id,
+            statusId: existingStatus.id
+          });
+        }
+      }
+      // 如果仍然失败，继续处理但记录错误
+      console.error('Failed to verify task status creation:', statusError);
     } else {
-      console.log('Successfully created task status record:', statusData);
+      console.log('Successfully created task status record');
     }
 
     return NextResponse.json({

@@ -8,18 +8,25 @@ const CREDITS_REQUIRED = 2; // 图生视频标准质量5秒所需积分
 
 export async function POST(request: Request) {
   const log = (message: string, data?: any) => {
-    console.log(`[I2V-5S] ${message}`, data ? JSON.stringify(data) : '');
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}][I2V-5S] ${message}`, data ? JSON.stringify(data, null, 2) : '');
   };
 
   try {
     const supabase = await createClient();
+    log('Supabase client created');
 
     // 1. 验证用户身份
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    if (userError) {
+      log('Authentication error', userError);
+      return NextResponse.json({ error: '认证错误: ' + userError.message }, { status: 401 });
+    }
+    if (!user) {
+      log('No user found');
       return NextResponse.json({ error: '未登录或登录已过期' }, { status: 401 });
     }
-    log('User authenticated', user.id);
+    log('User authenticated', { userId: user.id, email: user.email });
 
     // 2. 检查用户积分
     const { data: credits, error: creditsError } = await supabase
@@ -30,13 +37,14 @@ export async function POST(request: Request) {
 
     if (creditsError) {
       log('Error fetching credits', creditsError);
-      return NextResponse.json({ error: '获取用户积分失败' }, { status: 500 });
+      return NextResponse.json({ error: '获取用户积分失败: ' + creditsError.message }, { status: 500 });
     }
 
     if (!credits || credits.credits_balance < CREDITS_REQUIRED) {
+      log('Insufficient credits', { required: CREDITS_REQUIRED, available: credits?.credits_balance });
       return NextResponse.json({ error: '积分不足' }, { status: 400 });
     }
-    log('User credits verified', credits.credits_balance);
+    log('User credits verified', { balance: credits.credits_balance, required: CREDITS_REQUIRED });
 
     // 3. 解析请求数据
     const formData = await request.formData();
@@ -46,10 +54,22 @@ export async function POST(request: Request) {
     const cfg = formData.get('cfg') as string;
 
     if (!inputImage || !prompt) {
+      log('Missing required parameters', { 
+        hasImage: !!inputImage, 
+        hasPrompt: !!prompt 
+      });
       return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
     }
 
     // 4. 创建任务记录
+    log('Creating task definition', {
+      user_id: user.id,
+      task_type: 'i2v',
+      model: 'kling',
+      prompt: prompt,
+      cfg: cfg || '0.3'
+    });
+
     const { data: taskDef, error: taskDefError } = await supabase
       .from('video_generation_task_definitions')
       .insert({
@@ -61,6 +81,7 @@ export async function POST(request: Request) {
         negative_prompt: negativePrompt || '',
         cfg: cfg ? parseFloat(cfg) : 0.3,
         credits: CREDITS_REQUIRED,
+        start_img_path: 'pending', // 临时路径，后续更新
         additional_params: {
           duration: '5s'
         }
@@ -68,11 +89,18 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (taskDefError || !taskDef) {
+    if (taskDefError) {
       log('Error creating task definition', taskDefError);
-      return NextResponse.json({ error: '创建任务记录失败' }, { status: 500 });
+      return NextResponse.json({ 
+        error: '创建任务记录失败: ' + taskDefError.message,
+        details: taskDefError
+      }, { status: 500 });
     }
-    log('Task definition created', taskDef.id);
+    if (!taskDef) {
+      log('No task definition created');
+      return NextResponse.json({ error: '创建任务记录失败: 未返回任务ID' }, { status: 500 });
+    }
+    log('Task definition created', { taskId: taskDef.id });
 
     // 5. 准备调用外部 API
     const apiFormData = new FormData();
@@ -81,9 +109,10 @@ export async function POST(request: Request) {
     if (negativePrompt) apiFormData.append('negative_prompt', negativePrompt);
     apiFormData.append('cfg', cfg || '0.3');
 
-    // 打印完整的 API URL
-    log('Calling API URL', API_BASE_URL);
-    log('API Key', API_KEY ? 'Present' : 'Missing');
+    log('Calling external API', { 
+      url: API_BASE_URL,
+      hasApiKey: !!API_KEY
+    });
 
     // 6. 调用 302.ai API
     const apiResponse = await fetch(API_BASE_URL, {
@@ -96,49 +125,118 @@ export async function POST(request: Request) {
 
     if (!apiResponse.ok) {
       const apiError = await apiResponse.json();
-      log('API Error', apiError);
+      log('API Error Response', {
+        status: apiResponse.status,
+        statusText: apiResponse.statusText,
+        error: apiError
+      });
       throw new Error(apiError.message || '调用视频生成服务失败');
     }
 
     const apiResult = await apiResponse.json();
-    log('API Response', apiResult);
+    log('API Success Response', apiResult);
 
     // 从返回数据中提取 task id
     const externalTaskId = apiResult.data?.task?.id;
     if (!externalTaskId) {
-      log('No task ID in response', apiResult);
+      log('No task ID in API response', apiResult);
       throw new Error('未能获取任务ID');
     }
-    log('Extracted task ID', externalTaskId);
+    log('Extracted external task ID', { externalTaskId });
 
     // 7. 创建任务状态记录
-    const { data: taskStatus, error: taskStatusError } = await supabase
+    log('Creating task status', {
+      task_id: taskDef.id,
+      external_task_id: externalTaskId
+    });
+
+    // 尝试插入新记录，不带 select
+    const { error: insertError } = await supabase
       .from('video_generation_task_statuses')
       .insert({
         task_id: taskDef.id,
         external_task_id: externalTaskId,
         status: 'pending'
-      })
-      .select()
-      .single();
+      });
 
-    if (taskStatusError || !taskStatus) {
-      log('Error creating task status', taskStatusError);
-      return NextResponse.json({ error: '创建任务状态记录失败' }, { status: 500 });
+    if (insertError) {
+      log('Error creating task status', {
+        error: insertError,
+        errorCode: insertError.code,
+        errorMessage: insertError.message,
+        errorDetails: insertError.details,
+        hint: insertError.hint,
+        taskId: taskDef.id
+      });
+
+      // 如果是超时错误，等待一小段时间后再查询
+      if (insertError.code === '57014') {
+        // 等待 1 秒
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // 检查记录是否已创建
+      const { data: statusCheck, error: checkError } = await supabase
+        .from('video_generation_task_statuses')
+        .select('*')
+        .eq('task_id', taskDef.id)
+        .maybeSingle();
+
+      if (!checkError && statusCheck) {
+        log('Found status record after insert attempt', statusCheck);
+        return NextResponse.json({
+          message: '任务创建成功',
+          taskId: taskDef.id,
+          statusId: statusCheck.id,
+          status: statusCheck.status
+        });
+      }
+
+      // 如果仍然失败，返回错误
+      return NextResponse.json({ 
+        error: '创建任务状态记录失败: ' + insertError.message,
+        details: {
+          error: insertError,
+          taskId: taskDef.id,
+          externalTaskId: externalTaskId
+        }
+      }, { status: 500 });
     }
-    log('Task status created', taskStatus.id);
+
+    // 插入成功后查询记录
+    const { data: insertedStatus, error: queryError } = await supabase
+      .from('video_generation_task_statuses')
+      .select('*')
+      .eq('task_id', taskDef.id)
+      .maybeSingle();
+
+    if (queryError || !insertedStatus) {
+      log('Error querying inserted status', queryError);
+      // 即使查询失败也返回成功，因为插入已经成功
+      return NextResponse.json({
+        message: '任务创建成功',
+        taskId: taskDef.id,
+        status: 'pending'
+      });
+    }
+
+    log('Task status created and verified', insertedStatus);
 
     // 8. 返回成功响应
     return NextResponse.json({
       message: '任务创建成功',
       taskId: taskDef.id,
+      statusId: insertedStatus.id,
       status: 'pending'
     });
 
   } catch (error) {
     log('Unexpected error', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : '服务器内部错误' },
+      { 
+        error: error instanceof Error ? error.message : '服务器内部错误',
+        details: error
+      },
       { status: 500 }
     );
   }

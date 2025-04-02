@@ -6,11 +6,22 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  const supabaseUrl = process.env.karavideo_NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.karavideo_NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Try production environment variables first, then fall back to local development variables
+  const supabaseUrl = process.env.karavideo_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.karavideo_NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables');
+    console.error('Missing Supabase environment variables. Please check your .env.local file.');
+    // Instead of throwing an error, we'll redirect to login page
+    if (!request.nextUrl.pathname.startsWith('/login') && 
+        !request.nextUrl.pathname.startsWith('/auth') && 
+        !request.nextUrl.pathname.startsWith('/signup')) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+    // If we're already on login/auth/signup pages, just continue
+    return NextResponse.next();
   }
 
   const supabase = createServerClient(

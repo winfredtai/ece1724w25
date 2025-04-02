@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 
 const API_KEY = process.env.API_302_KEY;
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // 定义任务状态
 const TASK_STATUS = {
   QUEUING: 5,
@@ -24,118 +27,125 @@ function mapStatus(status: number): string {
   }
 }
 
-export async function GET(request: Request) {
-  // 验证请求是否来自 Vercel Cron
-  const authHeader = request.headers.get('x-vercel-cron');
-  if (process.env.VERCEL && !authHeader) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export async function GET() {
+  console.log('Starting video status check...');
+  const supabase = await createClient();
 
   try {
-    const supabase = await createClient();
-
     // 获取所有未完成的任务
-    const { data: pendingTasks, error: queryError } = await supabase
+    const { data: tasks, error: tasksError } = await supabase
       .from('video_generation_task_statuses')
-      .select(`
-        id,
-        task_id,
-        external_task_id,
-        status
-      `)
-      .not('status', 'eq', 'completed')
+      .select('*, video_generation_task_definitions(*)')
+      .in('status', ['pending', 'processing'])
       .order('created_at', { ascending: true });
 
-    if (queryError) {
-      console.error('Error fetching pending tasks:', queryError);
-      return NextResponse.json({ error: 'Failed to fetch pending tasks' }, { status: 500 });
+    if (tasksError) {
+      console.error('Error fetching tasks:', tasksError);
+      return NextResponse.json({ error: tasksError.message }, { status: 500 });
     }
 
-    if (!pendingTasks || pendingTasks.length === 0) {
-      return NextResponse.json({ message: 'No pending tasks' });
-    }
+    console.log(`Found ${tasks?.length || 0} tasks to check`);
 
-    // 处理每个待处理的任务
-    const updates = await Promise.all(pendingTasks.map(async (task) => {
-      if (!task.external_task_id) {
-        return null;
-      }
-
+    const results = [];
+    for (const task of tasks || []) {
       try {
-        // 调用 302.ai API 检查任务状态
-        const response = await fetch(`https://api.302.ai/klingai/task/${task.external_task_id}/fetch`, {
-          headers: {
-            'Authorization': `Bearer ${API_KEY}`
+        console.log(`Checking task ${task.id} with external ID ${task.external_task_id}...`);
+        
+        // 调用302.ai API
+        const response = await fetch(
+          `https://api.302.ai/klingai/task/${task.external_task_id}/fetch`,
+          {
+            headers: {
+              'Authorization': `Bearer ${API_KEY}`,
+            },
           }
-        });
+        );
 
         if (!response.ok) {
-          throw new Error(`API request failed with status ${response.status}`);
+          console.error(`API error for task ${task.id}:`, response.status, response.statusText);
+          continue;
         }
 
-        const responseData = await response.json();
-        
-        // 确保响应数据符合预期格式
-        if (!responseData.data || !responseData.data.task) {
-          throw new Error('Invalid response format from 302.ai API');
+        const data = await response.json();
+        console.log(`API response for task ${task.id}:`, JSON.stringify(data, null, 2));
+
+        // 获取状态码
+        const statusCode = data.data?.task?.status;
+        console.log(`Status code for task ${task.id}:`, statusCode);
+
+        // 解析状态
+        let newStatus;
+        if (statusCode === 5) {
+          newStatus = 'pending';
+        } else if (statusCode === 10) {
+          newStatus = 'processing';
+        } else if (statusCode === 99) {
+          newStatus = 'completed';
+        } else {
+          newStatus = 'failed';
         }
 
-        const { data } = responseData;
-        const status = data.status;
-        const dbStatus = mapStatus(status);
+        // 获取资源URL
+        const resultUrl = data.data?.works?.[0]?.resource?.resource || null;
+        const thumbnailUrl = data.data?.works?.[0]?.cover?.resource || null;
 
-        // 准备更新数据
-        const updateData: any = {
-          status: dbStatus,
-          updated_at: new Date().toISOString()
-        };
+        console.log(`Updating task ${task.id} with status:`, {
+          newStatus,
+          resultUrl,
+          thumbnailUrl
+        });
 
-        // 如果任务完成，添加视频和封面URL
-        if (status === TASK_STATUS.COMPLETED && data.works && data.works[0]) {
-          const work = data.works[0];
-          if (work.resource && work.resource.resource) {
-            updateData.result_url = work.resource.resource;
-          }
-          if (work.cover && work.cover.resource) {
-            updateData.thumbnail_url = work.cover.resource;
-          }
-        }
-
-        // 更新数据库中的任务状态
-        const { error: updateError } = await supabase
+        // 更新数据库
+        const { data: updateData, error: updateError } = await supabase
           .from('video_generation_task_statuses')
-          .update(updateData)
-          .eq('id', task.id);
+          .update({
+            status: newStatus,
+            result_url: resultUrl,
+            thumbnail_url: thumbnailUrl,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', task.id)
+          .select()
+          .single();
 
         if (updateError) {
-          console.error('Error updating task status:', updateError);
-          return null;
+          console.error(`Error updating task ${task.id}:`, updateError);
+          results.push({
+            taskId: task.id,
+            success: false,
+            error: updateError.message
+          });
+        } else {
+          console.log(`Successfully updated task ${task.id}`);
+          results.push({
+            taskId: task.id,
+            success: true,
+            newStatus,
+            resultUrl,
+            thumbnailUrl
+          });
         }
 
-        return {
-          task_id: task.id,
-          status: dbStatus,
-          ...(updateData.result_url && { result_url: updateData.result_url }),
-          ...(updateData.thumbnail_url && { thumbnail_url: updateData.thumbnail_url })
-        };
-
       } catch (error) {
-        console.error(`Error checking status for task ${task.id}:`, error);
-        return null;
+        console.error(`Error processing task ${task.id}:`, error);
+        results.push({
+          taskId: task.id,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
-    }));
+    }
 
-    const successfulUpdates = updates.filter(Boolean);
     return NextResponse.json({
-      message: `Processed ${successfulUpdates.length} tasks`,
-      updates: successfulUpdates
+      message: 'Status check completed',
+      results
     });
 
   } catch (error) {
-    console.error('Error in check-video-status:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error in status check:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
-}
-
-// 设置 revalidate 为 0 以禁用缓存
-export const revalidate = 0; 
+} 

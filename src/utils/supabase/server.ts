@@ -4,11 +4,12 @@ import { cookies } from "next/headers";
 export async function createClient() {
   const cookieStore = await cookies();
 
-  const supabaseUrl = process.env.karavideo_NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.karavideo_NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Try production environment variables first, then fall back to local development variables
+  const supabaseUrl = process.env.karavideo_NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.karavideo_NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables');
+    throw new Error('Missing Supabase environment variables. Please check your .env.local file.');
   }
 
   // Create a server's supabase client with newly configured cookie,

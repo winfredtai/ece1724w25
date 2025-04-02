@@ -10,13 +10,21 @@ const nextConfig = {
   },
   // 禁用 experimental features
   experimental: {
-    turbo: {
-      enabled: true
-    }
+    turbo: false
+  },
+  env: {
+    // 重写环境变量，使其在客户端可用
+    NEXT_PUBLIC_SUPABASE_URL: process.env.karavideo_NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.karavideo_NEXT_PUBLIC_SUPABASE_ANON_KEY
   },
   // 配置允许的图片域名
   images: {
-    domains: ['file.302.ai'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'file.302.ai'
+      }
+    ]
   },
   // 确保使用 webpack
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {

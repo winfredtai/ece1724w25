@@ -6,12 +6,12 @@ export async function GET() {
     const supabase = await createClient();
 
     // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Fetch user subscription
@@ -27,7 +27,7 @@ export async function GET() {
       console.error("Error fetching subscription:", subscriptionError);
       return NextResponse.json(
         { error: "Failed to fetch subscription" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -36,7 +36,7 @@ export async function GET() {
     console.error("Error in fetch-subscription route:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
-} 
+}

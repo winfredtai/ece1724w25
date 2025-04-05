@@ -32,8 +32,6 @@ import {
   Settings,
   Edit2,
   Save,
-  Calendar,
-  Clock,
   Crown,
   Star,
   BarChart,
@@ -58,7 +56,6 @@ type UserStats = {
   usagePercentage: number;
 };
 
-type UserSubscription = Tables<"user_subscriptions">;
 type UserCredits = Tables<"user_credits">;
 
 const ProfilePage: React.FC = () => {
@@ -140,16 +137,16 @@ const ProfilePage: React.FC = () => {
 
   const fetchUserCredits = useCallback(async () => {
     try {
-      console.log('Fetching user credits...');
+      console.log("Fetching user credits...");
       const response = await fetch("/api/user/fetch-credit");
-      console.log('Credits API response status:', response.status);
-      
+      console.log("Credits API response status:", response.status);
+
       if (!response.ok) {
         throw new Error(`Error fetching credits: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      console.log('Received credits data:', data);
+      console.log("Received credits data:", data);
       setUserCredits(data);
     } catch (error) {
       console.error("获取用户积分失败:", error);
@@ -158,7 +155,7 @@ const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      console.log('User authenticated, fetching data...');
+      console.log("User authenticated, fetching data...");
       fetchUserCreations();
       fetchUserCredits();
     }
@@ -244,43 +241,6 @@ const ProfilePage: React.FC = () => {
       console.error("更新资料失败:", error);
     }
   };
-
-  // Function to format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  // Function to format time
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("zh-CN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Get subscription plan display information
-  const getSubscriptionPlanInfo = (planType: string) => {
-    switch (planType) {
-      case "free":
-        return { name: "免费版", color: "bg-gray-200 text-gray-700" };
-      case "basic":
-        return { name: "基础版", color: "bg-blue-100 text-blue-700" };
-      case "pro":
-        return { name: "专业版", color: "bg-purple-100 text-purple-700" };
-      case "enterprise":
-        return { name: "企业版", color: "bg-amber-100 text-amber-700" };
-      default:
-        return { name: "未知", color: "bg-gray-100 text-gray-700" };
-    }
-  };
-
-  const planInfo = getSubscriptionPlanInfo("free");
 
   // 获取用户展示信息
   const getUserInitials = () => {
@@ -443,7 +403,10 @@ const ProfilePage: React.FC = () => {
                 我的积分
               </CardTitle>
               <CardDescription>
-                当前等级: <span className="font-medium">{userCredits?.level || "普通用户"}</span>
+                当前等级:{" "}
+                <span className="font-medium">
+                  {userCredits?.level || "普通用户"}
+                </span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -467,17 +430,23 @@ const ProfilePage: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-sm font-medium mb-1">总购买积分</h3>
-                <p className="text-sm">{userCredits?.total_credits_purchased || 0}</p>
+                <p className="text-sm">
+                  {userCredits?.total_credits_purchased || 0}
+                </p>
               </div>
               <div>
                 <h3 className="text-sm font-medium mb-1">已使用积分</h3>
-                <p className="text-sm">{userCredits?.total_credits_used || 0}</p>
+                <p className="text-sm">
+                  {userCredits?.total_credits_used || 0}
+                </p>
               </div>
               <div>
                 <h3 className="text-sm font-medium mb-1">最后购买时间</h3>
                 <p className="text-sm">
                   {userCredits?.last_purchase_date
-                    ? new Date(userCredits.last_purchase_date).toLocaleDateString()
+                    ? new Date(
+                        userCredits.last_purchase_date,
+                      ).toLocaleDateString()
                     : "-"}
                 </p>
               </div>

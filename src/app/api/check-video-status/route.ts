@@ -3,44 +3,23 @@ import { NextResponse } from "next/server";
 
 const API_KEY = process.env.API_302_KEY;
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// 定义任务状态
-const TASK_STATUS = {
-  QUEUING: 5,
-  PROCESSING: 10,
-  COMPLETED: 99
-};
-
-// 将 302.ai 的状态映射到我们的数据库状态
-function mapStatus(status: number): string {
-  switch (status) {
-    case TASK_STATUS.QUEUING:
-      return 'pending';
-    case TASK_STATUS.PROCESSING:
-      return 'processing';
-    case TASK_STATUS.COMPLETED:
-      return 'completed';
-    default:
-      return 'failed';
-  }
-}
-
 export async function GET() {
-  console.log('Starting video status check...');
+  console.log("Starting video status check...");
   const supabase = await createClient();
 
   try {
     // 获取所有未完成的任务
     const { data: tasks, error: tasksError } = await supabase
-      .from('video_generation_task_statuses')
-      .select('*, video_generation_task_definitions(*)')
-      .in('status', ['pending', 'processing'])
-      .order('created_at', { ascending: true });
+      .from("video_generation_task_statuses")
+      .select("*, video_generation_task_definitions(*)")
+      .in("status", ["pending", "processing"])
+      .order("created_at", { ascending: true });
 
     if (tasksError) {
-      console.error('Error fetching tasks:', tasksError);
+      console.error("Error fetching tasks:", tasksError);
       return NextResponse.json({ error: tasksError.message }, { status: 500 });
     }
 
@@ -49,25 +28,34 @@ export async function GET() {
     const results = [];
     for (const task of tasks || []) {
       try {
-        console.log(`Checking task ${task.id} with external ID ${task.external_task_id}...`);
-        
+        console.log(
+          `Checking task ${task.id} with external ID ${task.external_task_id}...`,
+        );
+
         // 调用302.ai API
         const response = await fetch(
           `https://api.302.ai/klingai/task/${task.external_task_id}/fetch`,
           {
             headers: {
-              'Authorization': `Bearer ${API_KEY}`,
+              Authorization: `Bearer ${API_KEY}`,
             },
-          }
+          },
         );
 
         if (!response.ok) {
-          console.error(`API error for task ${task.id}:`, response.status, response.statusText);
+          console.error(
+            `API error for task ${task.id}:`,
+            response.status,
+            response.statusText,
+          );
           continue;
         }
 
         const data = await response.json();
-        console.log(`API response for task ${task.id}:`, JSON.stringify(data, null, 2));
+        console.log(
+          `API response for task ${task.id}:`,
+          JSON.stringify(data, null, 2),
+        );
 
         // 获取状态码
         const statusCode = data.data?.task?.status;
@@ -76,13 +64,13 @@ export async function GET() {
         // 解析状态
         let newStatus;
         if (statusCode === 5) {
-          newStatus = 'pending';
+          newStatus = "pending";
         } else if (statusCode === 10) {
-          newStatus = 'processing';
+          newStatus = "processing";
         } else if (statusCode === 99) {
-          newStatus = 'completed';
+          newStatus = "completed";
         } else {
-          newStatus = 'failed';
+          newStatus = "failed";
         }
 
         // 获取资源URL
@@ -92,19 +80,19 @@ export async function GET() {
         console.log(`Updating task ${task.id} with status:`, {
           newStatus,
           resultUrl,
-          thumbnailUrl
+          thumbnailUrl,
         });
 
         // 更新数据库
-        const { data: updateData, error: updateError } = await supabase
-          .from('video_generation_task_statuses')
+        const { error: updateError } = await supabase
+          .from("video_generation_task_statuses")
           .update({
             status: newStatus,
             result_url: resultUrl,
             thumbnail_url: thumbnailUrl,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
-          .eq('id', task.id)
+          .eq("id", task.id)
           .select()
           .single();
 
@@ -113,7 +101,7 @@ export async function GET() {
           results.push({
             taskId: task.id,
             success: false,
-            error: updateError.message
+            error: updateError.message,
           });
         } else {
           console.log(`Successfully updated task ${task.id}`);
@@ -122,30 +110,28 @@ export async function GET() {
             success: true,
             newStatus,
             resultUrl,
-            thumbnailUrl
+            thumbnailUrl,
           });
         }
-
       } catch (error) {
         console.error(`Error processing task ${task.id}:`, error);
         results.push({
           taskId: task.id,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
 
     return NextResponse.json({
-      message: 'Status check completed',
-      results
+      message: "Status check completed",
+      results,
     });
-
   } catch (error) {
-    console.error('Error in status check:', error);
+    console.error("Error in status check:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
     );
   }
-} 
+}

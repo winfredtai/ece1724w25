@@ -2,22 +2,20 @@
 import React, { useState } from "react";
 import {
   Button,
-  Input,
-  RadioGroup,
-  RadioGroupItem,
-  Label,
-  Textarea,
-  Card,
-  CardContent,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Label,
+  Textarea,
+  Card,
+  CardContent,
 } from "@/components/ui";
-import { Film, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
+import Image from "next/image";
 
 interface VideoGenerationParams {
   prompt: string;
@@ -28,12 +26,11 @@ interface VideoGenerationParams {
 
 const ImageToVideoPage: React.FC = () => {
   const router = useRouter();
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [model, setModel] = useState<'standard' | 'high-quality'>('standard');
-  const [duration, setDuration] = useState<'5s' | '10s'>('5s');
+  const [model, setModel] = useState<"standard" | "high-quality">("standard");
+  const [duration, setDuration] = useState<"5s" | "10s">("5s");
 
   // State management
   const [params, setParams] = useState<VideoGenerationParams>({
@@ -63,7 +60,7 @@ const ImageToVideoPage: React.FC = () => {
         toast.error("文件大小不能超过 10MB");
         return;
       }
-      
+
       setSelectedFile(file);
       // Create preview URL
       const url = URL.createObjectURL(file);
@@ -93,47 +90,48 @@ const ImageToVideoPage: React.FC = () => {
     }
 
     setIsGenerating(true);
-    
+
     try {
       // Create form data
       const formData = new FormData();
-      formData.append('input_image', selectedFile);
-      formData.append('prompt', params.prompt);
+      formData.append("input_image", selectedFile);
+      formData.append("prompt", params.prompt);
       if (params.negative_prompt) {
-        formData.append('negative_prompt', params.negative_prompt);
+        formData.append("negative_prompt", params.negative_prompt);
       }
-      formData.append('cfg', '0.3'); // 默认值
+      formData.append("cfg", "0.3"); // 默认值
 
       // 根据选择的模型和时长确定 API 路径
-      let apiPath = '/api/kling/i2v';
-      if (model === 'high-quality') {
-        apiPath += '/hq';
+      let apiPath = "/api/kling/i2v";
+      if (model === "high-quality") {
+        apiPath += "/hq";
       }
       apiPath += `/${duration}`;
 
       const response = await fetch(apiPath, {
-        method: 'POST',
+        method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || '生成失败');
+        throw new Error(error.error || "生成失败");
       }
 
       const data = await response.json();
-      console.log('Generation result:', data);
-      
+      console.log("Generation result:", data);
+
       toast.success("视频生成请求已发送");
-      
+
       // 可以跳转到任务详情页
       if (data.taskId) {
         router.push(`/user/creation?taskId=${data.taskId}`);
       }
-
     } catch (error) {
-      console.error('Generation error:', error);
-      toast.error(error instanceof Error ? error.message : "生成失败，请稍后重试");
+      console.error("Generation error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "生成失败，请稍后重试",
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -142,9 +140,9 @@ const ImageToVideoPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <Toaster position="top-right" />
-      
+
       <h1 className="text-2xl font-bold mb-6">图片生成视频</h1>
-      
+
       <Card className="max-w-2xl mx-auto">
         <CardContent className="p-6">
           <div className="space-y-6">
@@ -165,10 +163,13 @@ const ImageToVideoPage: React.FC = () => {
                 >
                   {previewUrl ? (
                     <div className="relative">
-                      <img
+                      <Image
                         src={previewUrl}
                         alt="Preview"
-                        className="max-h-[300px] mx-auto rounded-lg"
+                        width={300}
+                        height={300}
+                        className="max-h-[300px] mx-auto rounded-lg object-contain"
+                        unoptimized // Since we're using object URL
                       />
                       <Button
                         variant="outline"
@@ -226,7 +227,9 @@ const ImageToVideoPage: React.FC = () => {
               <Label htmlFor="model">选择模型</Label>
               <Select
                 value={model}
-                onValueChange={(value: 'standard' | 'high-quality') => setModel(value)}
+                onValueChange={(value: "standard" | "high-quality") =>
+                  setModel(value)
+                }
               >
                 <SelectTrigger id="model">
                   <SelectValue placeholder="选择模型" />
@@ -243,7 +246,7 @@ const ImageToVideoPage: React.FC = () => {
               <Label htmlFor="duration">视频时长</Label>
               <Select
                 value={duration}
-                onValueChange={(value: '5s' | '10s') => setDuration(value)}
+                onValueChange={(value: "5s" | "10s") => setDuration(value)}
               >
                 <SelectTrigger id="duration">
                   <SelectValue placeholder="选择时长" />

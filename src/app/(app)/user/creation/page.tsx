@@ -48,6 +48,17 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 
+// Types for API response
+interface ApiCreation {
+  id: number;
+  task_type: string;
+  prompt: string | null;
+  thumbnail_url: string | null;
+  result_url: string | null;
+  created_at: string;
+  status: string;
+}
+
 // Types for creations
 interface UserCreation {
   id: string;
@@ -102,20 +113,23 @@ const MyCreationsPage = () => {
           // User is authenticated, fetch user creations
           const response = await fetch("/api/user/fetch-creation");
           const { creations } = await response.json();
-          
+
           // Transform the API response to match our UserCreation interface
-          const transformedCreations = creations.map((creation: any) => ({
-            id: creation.id?.toString() || "",
-            type: creation.task_type === "video" ? "video" : "image",
-            title: creation.prompt || "Untitled",
-            description: creation.prompt || "",
-            thumbnailUrl: creation.thumbnail_url || "/images/creations/placeholder.jpg",
-            url: creation.result_url || "",
-            createdAt: creation.created_at || new Date().toISOString(),
-            status: creation.status || "processing",
-            starred: false, // We can implement this feature later
-            prompt: creation.prompt || ""
-          }));
+          const transformedCreations = creations.map(
+            (creation: ApiCreation) => ({
+              id: creation.id.toString(),
+              type: creation.task_type === "video" ? "video" : "image",
+              title: creation.prompt || "Untitled",
+              description: creation.prompt || "",
+              thumbnailUrl:
+                creation.thumbnail_url || "/images/creations/placeholder.jpg",
+              url: creation.result_url || "",
+              createdAt: creation.created_at || new Date().toISOString(),
+              status: creation.status || "processing",
+              starred: false, // We can implement this feature later
+              prompt: creation.prompt || "",
+            }),
+          );
 
           setCreations(transformedCreations);
           setFilteredCreations(transformedCreations);
@@ -408,8 +422,8 @@ const MyCreationsPage = () => {
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {getPaginatedCreations(tab).map((creation) => (
                     <Card key={creation.id} className="overflow-hidden">
-                      <div 
-                        className="relative aspect-video cursor-pointer" 
+                      <div
+                        className="relative aspect-video cursor-pointer"
                         onClick={() => handlePreview(creation)}
                       >
                         <Image
@@ -545,11 +559,14 @@ const MyCreationsPage = () => {
                         </p>
                         <p className="text-xs text-muted-foreground mt-2">
                           创建于{" "}
-                          {new Date(creation.createdAt).toLocaleDateString("zh-CN", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
+                          {new Date(creation.createdAt).toLocaleDateString(
+                            "zh-CN",
+                            {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            },
+                          )}
                         </p>
                       </CardContent>
                     </Card>
@@ -662,15 +679,20 @@ const MyCreationsPage = () => {
             )}
           </div>
           <div className="mt-4">
-            <p className="text-sm text-muted-foreground">{selectedCreation?.prompt}</p>
+            <p className="text-sm text-muted-foreground">
+              {selectedCreation?.prompt}
+            </p>
             <p className="text-xs text-muted-foreground mt-2">
               创建于{" "}
               {selectedCreation?.createdAt
-                ? new Date(selectedCreation.createdAt).toLocaleDateString("zh-CN", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })
+                ? new Date(selectedCreation.createdAt).toLocaleDateString(
+                    "zh-CN",
+                    {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    },
+                  )
                 : ""}
             </p>
           </div>

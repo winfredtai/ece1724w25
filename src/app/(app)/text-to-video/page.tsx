@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Button,
-  Input,
   RadioGroup,
   RadioGroupItem,
   Label,
@@ -108,14 +107,14 @@ const TextToVideoPage: React.FC = () => {
 
     if (!isAuthenticated || !user) {
       toast.error("请先登录后再生成视频");
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
     const requiredCredits = getRequiredCredits();
     if (!credits || credits.credits_balance < requiredCredits) {
       toast.error(`积分不足，需要 ${requiredCredits} 积分`);
-      router.push('/user/profile'); // 跳转到个人中心，用户可以在那里购买积分
+      router.push("/user/profile"); // 跳转到个人中心，用户可以在那里购买积分
       return;
     }
 
@@ -124,7 +123,7 @@ const TextToVideoPage: React.FC = () => {
       console.log("Sending request with params:", params);
       const result = await generateVideo(params);
       console.log("Generation result:", result);
-      
+
       // Refresh credits after successful generation
       const supabase = createClient();
       const { data } = await supabase
@@ -132,18 +131,23 @@ const TextToVideoPage: React.FC = () => {
         .select("*")
         .eq("user_id", user.id)
         .single();
-      
+
       setCredits(data || { credits_balance: 0, total_credits_used: 0 });
-      
+
       toast.success("视频生成请求已发送");
       router.push(`/user/creation`); // 跳转到创作列表页面
     } catch (error) {
       console.error("Video generation error:", error);
-      if (error instanceof Error && error.message.includes("Insufficient credits")) {
+      if (
+        error instanceof Error &&
+        error.message.includes("Insufficient credits")
+      ) {
         toast.error("积分不足，请先购买积分");
-        router.push('/user/profile');
+        router.push("/user/profile");
       } else {
-        toast.error(error instanceof Error ? error.message : "生成失败，请稍后重试");
+        toast.error(
+          error instanceof Error ? error.message : "生成失败，请稍后重试",
+        );
       }
     } finally {
       setIsGenerating(false);
@@ -153,10 +157,10 @@ const TextToVideoPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <Toaster position="top-right" />
-      
+
       <div className="tech-card p-8 mb-10 relative overflow-hidden max-w-3xl mx-auto">
         <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-teal-500/5"></div>
-        
+
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-8">
             <Film className="h-6 w-6" />
@@ -181,8 +185,14 @@ const TextToVideoPage: React.FC = () => {
                   <Label htmlFor="model-runaway">Runaway (即将上线)</Label>
                 </div>
                 <div className="flex items-center space-x-2 opacity-50">
-                  <RadioGroupItem value="stability" id="model-stability" disabled />
-                  <Label htmlFor="model-stability">Stability AI (即将上线)</Label>
+                  <RadioGroupItem
+                    value="stability"
+                    id="model-stability"
+                    disabled
+                  />
+                  <Label htmlFor="model-stability">
+                    Stability AI (即将上线)
+                  </Label>
                 </div>
               </RadioGroup>
             </div>
@@ -255,7 +265,9 @@ const TextToVideoPage: React.FC = () => {
               <Label>视频比例</Label>
               <RadioGroup
                 value={params.aspect_ratio}
-                onValueChange={(value) => handleRadioChange("aspect_ratio", value)}
+                onValueChange={(value) =>
+                  handleRadioChange("aspect_ratio", value)
+                }
                 className="flex gap-4"
               >
                 <div className="flex items-center space-x-2">

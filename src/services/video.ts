@@ -18,14 +18,14 @@ interface VideoGenerationResponse {
  */
 const getApiPath = (params: VideoGenerationParams) => {
   const { model, quality, duration } = params;
-  
+
   // 目前只支持 kling 模型
   if (model === "kling") {
     // 根据质量和时长构建路径
     const path = `/api/kling/${quality === "hq" ? "hq/" : ""}${duration}`;
     return path;
   }
-  
+
   throw new Error("Unsupported model");
 };
 
@@ -33,11 +33,11 @@ const getApiPath = (params: VideoGenerationParams) => {
  * 统一的视频生成请求函数
  */
 export const generateVideo = async (
-  params: VideoGenerationParams
+  params: VideoGenerationParams,
 ): Promise<VideoGenerationResponse> => {
   try {
     const apiPath = getApiPath(params);
-    
+
     const response = await fetch(apiPath, {
       method: "POST",
       headers: {
@@ -61,4 +61,4 @@ export const generateVideo = async (
     console.error("Video generation error:", error);
     throw error;
   }
-}; 
+};

@@ -1,28 +1,25 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "@/types/supabase";
 
 const API_BASE_URL = process.env.KLING_BASE_URL || "https://api.klingai.com";
 const ACCESS_KEY_ID = process.env.KLING_ACCESS_KEY_ID || "";
 const ACCESS_KEY_SECRET = process.env.KLING_ACCESS_KEY_SECRET || "";
 const API_302_KEY = process.env.API_302_KEY || "";
 
-// 添加支持的API端点列表
-const SUPPORTED_API_ENDPOINTS = [
-  "https://api.klingai.com", // 官方端点
-  "https://api.302.ai/klingai", // 302.ai端点
-];
-
 // 获取任务类型的函数
 function getTaskProvider(apiEndpoint: string | undefined): string {
   if (!apiEndpoint) return "unknown";
-  
+
   if (apiEndpoint.startsWith("https://api.klingai.com")) {
     return "official";
   } else if (apiEndpoint.startsWith("https://api.302.ai")) {
     return "302";
   }
-  
+
   return "unknown";
 }
 
@@ -53,16 +50,92 @@ function generateJwtToken(
   return jwt.sign(payload, accessKeySecret, { header: headers });
 }
 
+// 定义类型
+interface TaskStatus {
+  id: number;
+  task_id: number;
+  external_task_id: string;
+  status: string;
+  result_url: string | null;
+  thumbnail_url: string | null;
+  error_message: string | null;
+  updated_at: string;
+  video_generation_task_definitions: {
+    id: number;
+    model: string;
+    task_type: string;
+    additional_params?: {
+      api_endpoint?: string | null;
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
+interface TaskResult {
+  taskId: number;
+  success: boolean;
+  newStatus?: string;
+  resultUrl?: string | null;
+  thumbnailUrl?: string | null;
+  error?: string;
+  reason?: string;
+}
+
+interface CountRef {
+  value: number;
+}
+
+// 添加302.ai API响应的类型定义
+interface API302Response {
+  data?: {
+    status?: number;
+    works?: Array<{
+      resource?: {
+        resource?: string;
+      };
+      cover?: {
+        resource?: string;
+      };
+    }>;
+    task?: {
+      id: string;
+      status: number;
+    };
+  };
+  error?: string | null;
+  message?: string;
+  result: number;
+  status: number;
+  timestamp: number;
+}
+
+// 添加Kling官方API响应的类型定义
+interface KlingAPIResponse {
+  data?: Array<{
+    task_id: string;
+    task_status: string;
+    task_status_msg?: string;
+    task_result?: {
+      videos?: Array<{
+        url: string;
+      }>;
+    };
+  }>;
+  total_count?: number;
+}
+
 /**
  * 处理302.ai的任务状态更新
  */
 async function handle302Task(
-  task: any,
-  supabase: any,
+  task: TaskStatus,
+  supabase: SupabaseClient<Database>,
   log: (message: string, data?: unknown) => void,
-  results: any[],
-  successCount: { value: number },
-  failCount: { value: number }
+  results: TaskResult[],
+  successCount: CountRef,
+  failCount: CountRef,
 ) {
   try {
     // 检查API key
@@ -95,10 +168,10 @@ async function handle302Task(
       return;
     }
 
-    const apiResponse = await response.json();
-    log("302.ai API response received", { 
+    const apiResponse: API302Response = await response.json();
+    log("302.ai API response received", {
       taskId: task.external_task_id,
-      status: apiResponse.data?.status 
+      status: apiResponse.data?.status,
     });
 
     // 解析任务状态
@@ -110,11 +183,11 @@ async function handle302Task(
     // 更新状态基于302.ai的响应
     if (apiResponse.result === 1) {
       const status = apiResponse.data?.status;
-      
+
       switch (status) {
         case 99: // 完成
           newStatus = "completed";
-          
+
           // 从返回数据中提取视频和缩略图URL
           if (apiResponse.data?.works && apiResponse.data.works.length > 0) {
             const work = apiResponse.data.works[0];
@@ -139,8 +212,11 @@ async function handle302Task(
       }
     } else {
       // API返回错误
-      log("302.ai API returned error", apiResponse.error || apiResponse.message);
-      
+      log(
+        "302.ai API returned error",
+        apiResponse.error || apiResponse.message,
+      );
+
       if (apiResponse.status >= 400) {
         // 处理API错误
         handleApiFailure(task, supabase, log, successCount);
@@ -204,10 +280,10 @@ async function handle302Task(
  * 处理API调用失败的情况
  */
 async function handleApiFailure(
-  task: any,
-  supabase: any,
+  task: TaskStatus,
+  supabase: SupabaseClient<Database>,
   log: (message: string, data?: unknown) => void,
-  successCount: { value: number }
+  successCount: CountRef,
 ) {
   const updatedAt = new Date(task.updated_at);
   const hoursSinceUpdate =
@@ -270,13 +346,16 @@ export async function GET() {
     // log("JWT token generated successfully");
 
     // Fetch processing and pending Kling video tasks
-    const { data: tasks, error: tasksError } = await supabase
+    const { data: tasks, error: tasksError } = (await supabase
       .from("video_generation_task_statuses")
       .select("*, video_generation_task_definitions(*)")
       .in("status", ["processing", "pending", "queued"])
       .eq("video_generation_task_definitions.model", "kling") // Only process Kling official video tasks
       .order("updated_at", { ascending: true })
-      .limit(10); // Process in batches
+      .limit(10)) as {
+      data: TaskStatus[] | null;
+      error: Error | null;
+    }; // Process in batches
 
     if (tasksError) {
       log("Error fetching tasks", tasksError);
@@ -285,7 +364,7 @@ export async function GET() {
 
     // log(`Found ${tasks?.length || 0} tasks to check`);
 
-    const results = [];
+    const results: TaskResult[] = [];
     const processedCount = tasks?.length || 0;
     const successCountRef = { value: 0 };
     const failCountRef = { value: 0 };
@@ -298,12 +377,12 @@ export async function GET() {
         const taskApiEndpoint =
           task.video_generation_task_definitions.additional_params
             ?.api_endpoint;
-        
+
         // 获取提供商类型
         const provider = getTaskProvider(taskApiEndpoint);
-        
+
         // 只要是已知的提供商，都认为是有效的Kling任务
-        isOfficialKling = (provider === "official" || provider === "302");
+        isOfficialKling = provider === "official" || provider === "302";
 
         log("Task details", {
           taskId: task.id,
@@ -312,7 +391,7 @@ export async function GET() {
           taskType: task.video_generation_task_definitions.task_type,
           apiEndpoint: taskApiEndpoint,
           provider,
-          isOfficialKling
+          isOfficialKling,
         });
 
         // Skip if not an official Kling task
@@ -358,7 +437,14 @@ export async function GET() {
         // 根据提供商类型使用不同的API调用方式
         if (provider === "302") {
           // 302.ai 特定的API调用逻辑
-          await handle302Task(task, supabase, log, results, successCountRef, failCountRef);
+          await handle302Task(
+            task,
+            supabase,
+            log,
+            results,
+            successCountRef,
+            failCountRef,
+          );
           continue; // 跳过后续的官方API处理逻辑
         }
 
@@ -413,7 +499,7 @@ export async function GET() {
           continue;
         }
 
-        const apiResponse = await response.json();
+        const apiResponse: KlingAPIResponse = await response.json();
         // log("API response received", { responseSize: JSON.stringify(apiResponse).length });
 
         // Find the matching task in the response

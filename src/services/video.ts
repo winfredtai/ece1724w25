@@ -10,7 +10,6 @@ interface VideoGenerationParams {
 interface VideoGenerationResponse {
   taskId: string;
   status: string;
-  // 可以根据实际返回数据扩展这个接口
 }
 
 /**
@@ -22,7 +21,7 @@ const getApiPath = (params: VideoGenerationParams) => {
   // 目前只支持 kling 模型
   if (model === "kling") {
     // 根据质量和时长构建路径
-    const path = `/api/kling/${quality === "hq" ? "hq/" : ""}${duration}`;
+    const path = `/api/kling-official/${quality === "hq" ? "hq/" : ""}${duration}`;
     return path;
   }
 

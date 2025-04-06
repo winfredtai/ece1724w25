@@ -69,7 +69,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         <div className="flex items-center space-x-2">
           <div className="relative">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/60 to-blue-500/60 rounded-full blur opacity-75 animate-pulse"></div>
-            <Link href="/" className="block">
+            <Link href="/home" className="block">
               <span className="relative text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300">
                 Karavideo.ai
               </span>

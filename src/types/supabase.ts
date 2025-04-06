@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      system_settings: {
+        Row: {
+          created_at: string | null;
+          id: number;
+          key: string;
+          updated_at: string | null;
+          value: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          id?: number;
+          key: string;
+          updated_at?: string | null;
+          value?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          id?: number;
+          key?: string;
+          updated_at?: string | null;
+          value?: string | null;
+        };
+        Relationships: [];
+      };
       user_credits: {
         Row: {
           created_at: string;
@@ -146,7 +170,7 @@ export type Database = {
           model: string;
           negative_prompt: string | null;
           prompt: string | null;
-          start_img_path: string;
+          start_img_path: string | null;
           task_type: string;
           user_id: string | null;
         };
@@ -164,7 +188,7 @@ export type Database = {
           model: string;
           negative_prompt?: string | null;
           prompt?: string | null;
-          start_img_path: string;
+          start_img_path?: string | null;
           task_type: string;
           user_id?: string | null;
         };
@@ -182,7 +206,7 @@ export type Database = {
           model?: string;
           negative_prompt?: string | null;
           prompt?: string | null;
-          start_img_path?: string;
+          start_img_path?: string | null;
           task_type?: string;
           user_id?: string | null;
         };
@@ -194,6 +218,7 @@ export type Database = {
           error_message: string | null;
           external_task_id: string | null;
           id: number;
+          r2_status: string;
           result_url: string | null;
           status: string;
           task_id: number;
@@ -205,6 +230,7 @@ export type Database = {
           error_message?: string | null;
           external_task_id?: string | null;
           id?: number;
+          r2_status?: string;
           result_url?: string | null;
           status?: string;
           task_id: number;
@@ -216,6 +242,7 @@ export type Database = {
           error_message?: string | null;
           external_task_id?: string | null;
           id?: number;
+          r2_status?: string;
           result_url?: string | null;
           status?: string;
           task_id?: number;
@@ -237,13 +264,196 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      bytea_to_text: {
+        Args: {
+          data: string;
+        };
+        Returns: string;
+      };
+      get_user_credits: {
+        Args: {
+          user_id_param: string;
+        };
+        Returns: {
+          created_at: string;
+          credits_balance: number;
+          id: number;
+          last_purchase_date: string | null;
+          level: string;
+          total_credits_purchased: number;
+          total_credits_used: number;
+          updated_at: string;
+          user_id: string;
+        };
+      };
+      http: {
+        Args: {
+          request: Database["public"]["CompositeTypes"]["http_request"];
+        };
+        Returns: unknown;
+      };
+      http_delete:
+        | {
+            Args: {
+              uri: string;
+            };
+            Returns: unknown;
+          }
+        | {
+            Args: {
+              uri: string;
+              content: string;
+              content_type: string;
+            };
+            Returns: unknown;
+          };
+      http_get:
+        | {
+            Args: {
+              uri: string;
+            };
+            Returns: unknown;
+          }
+        | {
+            Args: {
+              uri: string;
+              data: Json;
+            };
+            Returns: unknown;
+          };
+      http_head: {
+        Args: {
+          uri: string;
+        };
+        Returns: unknown;
+      };
+      http_header: {
+        Args: {
+          field: string;
+          value: string;
+        };
+        Returns: Database["public"]["CompositeTypes"]["http_header"];
+      };
+      http_list_curlopt: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          curlopt: string;
+          value: string;
+        }[];
+      };
+      http_patch: {
+        Args: {
+          uri: string;
+          content: string;
+          content_type: string;
+        };
+        Returns: unknown;
+      };
+      http_post:
+        | {
+            Args: {
+              uri: string;
+              content: string;
+              content_type: string;
+            };
+            Returns: unknown;
+          }
+        | {
+            Args: {
+              uri: string;
+              data: Json;
+            };
+            Returns: unknown;
+          };
+      http_put: {
+        Args: {
+          uri: string;
+          content: string;
+          content_type: string;
+        };
+        Returns: unknown;
+      };
+      http_reset_curlopt: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      http_set_curlopt: {
+        Args: {
+          curlopt: string;
+          value: string;
+        };
+        Returns: boolean;
+      };
+      text_to_bytea: {
+        Args: {
+          data: string;
+        };
+        Returns: string;
+      };
+      update_i2v_status: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      update_kling_official_i2v_status: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      update_video_status: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
+      urlencode:
+        | {
+            Args: {
+              data: Json;
+            };
+            Returns: string;
+          }
+        | {
+            Args: {
+              string: string;
+            };
+            Returns: string;
+          }
+        | {
+            Args: {
+              string: string;
+            };
+            Returns: string;
+          };
     };
     Enums: {
       [_ in never]: never;
     };
     CompositeTypes: {
-      [_ in never]: never;
+      http_header: {
+        field: string | null;
+        value: string | null;
+      };
+      http_request: {
+        method: unknown | null;
+        uri: string | null;
+        headers: Database["public"]["CompositeTypes"]["http_header"][] | null;
+        content_type: string | null;
+        content: string | null;
+      };
+      http_response: {
+        status: number | null;
+        content_type: string | null;
+        headers: Database["public"]["CompositeTypes"]["http_header"][] | null;
+        content: string | null;
+      };
+      video_update_detail: {
+        task_id: number | null;
+        external_task_id: string | null;
+        previous_status: string | null;
+        new_status: string | null;
+        api_url: string | null;
+        api_response: string | null;
+        api_status: number | null;
+        updated: boolean | null;
+        error: string | null;
+      };
     };
   };
 };

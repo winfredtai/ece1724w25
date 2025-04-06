@@ -12,6 +12,16 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "file.302.ai",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.klingai.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "pub-7d734936d4b14f42b4d57763fc2b3d12.r2.dev",
+        pathname: "/**",
+      },
     ],
   },
   env: {

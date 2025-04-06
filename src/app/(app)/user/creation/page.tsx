@@ -426,13 +426,30 @@ const MyCreationsPage = () => {
                         className="relative aspect-video cursor-pointer"
                         onClick={() => handlePreview(creation)}
                       >
-                        <Image
-                          src={creation.thumbnailUrl}
-                          alt={creation.title}
-                          className="h-full w-full object-cover"
-                          width={400}
-                          height={225}
-                        />
+                        {creation.type === "video" &&
+                        (!creation.thumbnailUrl ||
+                          creation.thumbnailUrl ===
+                            "/images/creations/placeholder.jpg") ? (
+                          <video
+                            src={creation.url}
+                            className="h-full w-full object-cover"
+                            width={400}
+                            height={225}
+                            muted
+                            loop
+                            playsInline
+                            onMouseOver={(e) => e.currentTarget.play()}
+                            onMouseOut={(e) => e.currentTarget.pause()}
+                          />
+                        ) : (
+                          <Image
+                            src={creation.thumbnailUrl}
+                            alt={creation.title}
+                            className="h-full w-full object-cover"
+                            width={400}
+                            height={225}
+                          />
+                        )}
                         <div className="absolute bottom-2 right-2 flex space-x-1">
                           {creation.status === "processing" && (
                             <Badge

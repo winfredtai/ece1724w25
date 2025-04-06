@@ -1,4 +1,4 @@
-"use client"; // This is a client component that uses React hooks
+"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -654,7 +654,10 @@ const ProfilePage: React.FC = () => {
                                 description: creation.prompt || "",
                                 thumbnailUrl:
                                   creation.thumbnail_url ||
-                                  "/images/creations/placeholder.jpg",
+                                  (creation.task_type === "video" &&
+                                  creation.result_url
+                                    ? creation.result_url
+                                    : "/images/creations/placeholder.jpg"),
                                 url: creation.result_url || "",
                                 createdAt: creation.created_at || "",
                                 status:
@@ -718,7 +721,10 @@ const ProfilePage: React.FC = () => {
                                 description: creation.prompt || "",
                                 thumbnailUrl:
                                   creation.thumbnail_url ||
-                                  "/images/creations/placeholder.jpg",
+                                  (creation.task_type === "video" &&
+                                  creation.result_url
+                                    ? creation.result_url
+                                    : "/images/creations/placeholder.jpg"),
                                 url: creation.result_url || "",
                                 createdAt: creation.created_at || "",
                                 status:

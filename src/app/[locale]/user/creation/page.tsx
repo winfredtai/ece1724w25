@@ -47,6 +47,7 @@ import {
   Play,
 } from "lucide-react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 
 // Types for API response
 interface ApiCreation {
@@ -95,6 +96,7 @@ const MyCreationsPage = () => {
     null,
   );
   const [newTitle, setNewTitle] = useState("");
+  const t = useTranslations("User.Creation");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -219,7 +221,6 @@ const MyCreationsPage = () => {
       try {
         const taskId = parseInt(selectedCreation.id);
 
-        // 更新任务定义中的prompt字段作为新标题
         const { error } = await supabase
           .from("video_generation_task_definitions")
           .update({ prompt: newTitle.trim() })
@@ -227,7 +228,6 @@ const MyCreationsPage = () => {
 
         if (error) throw error;
 
-        // 更新本地状态
         setCreations((prevCreations) =>
           prevCreations.map((creation) =>
             creation.id === selectedCreation.id
@@ -238,8 +238,8 @@ const MyCreationsPage = () => {
 
         setRenameDialogOpen(false);
       } catch (error) {
-        console.error("重命名创作失败:", error);
-        alert("重命名创作失败，请稍后再试");
+        console.error("Rename creation failed:", error);
+        alert(t("Error.renameFailed"));
       }
     }
   };
@@ -252,7 +252,6 @@ const MyCreationsPage = () => {
       const taskId = parseInt(creation.id);
 
       if (creation.starred) {
-        // 如果已收藏，则取消收藏
         const { error } = await supabase
           .from("user_favorites")
           .delete()
@@ -261,7 +260,6 @@ const MyCreationsPage = () => {
 
         if (error) throw error;
       } else {
-        // 如果未收藏，则添加收藏
         const { error } = await supabase.from("user_favorites").insert({
           user_id: userId,
           task_id: taskId,
@@ -270,14 +268,14 @@ const MyCreationsPage = () => {
         if (error) throw error;
       }
 
-      // 更新本地状态
       setCreations((prevCreations) =>
         prevCreations.map((c) =>
           c.id === creation.id ? { ...c, starred: !c.starred } : c,
         ),
       );
     } catch (error) {
-      console.error("切换收藏状态失败:", error);
+      console.error("Switching star status failed:", error);
+      alert(t("Error.switchStarFailed"));
     }
   };
 
@@ -291,7 +289,6 @@ const MyCreationsPage = () => {
       try {
         const taskId = parseInt(selectedCreation.id);
 
-        // 删除任务状态
         const { error: statusError } = await supabase
           .from("video_generation_task_statuses")
           .delete()
@@ -299,7 +296,6 @@ const MyCreationsPage = () => {
 
         if (statusError) throw statusError;
 
-        // 删除收藏记录
         const { error: favError } = await supabase
           .from("user_favorites")
           .delete()
@@ -307,7 +303,6 @@ const MyCreationsPage = () => {
 
         if (favError) throw favError;
 
-        // 删除任务定义
         const { error: taskError } = await supabase
           .from("video_generation_task_definitions")
           .delete()
@@ -315,7 +310,6 @@ const MyCreationsPage = () => {
 
         if (taskError) throw taskError;
 
-        // 更新本地状态
         setCreations((prevCreations) =>
           prevCreations.filter(
             (creation) => creation.id !== selectedCreation.id,
@@ -324,8 +318,8 @@ const MyCreationsPage = () => {
 
         setDeleteDialogOpen(false);
       } catch (error) {
-        console.error("删除创作失败:", error);
-        alert("删除创作失败，请稍后再试");
+        console.error("Delete creation failed:", error);
+        alert(t("Error.deleteFailed"));
       }
     }
   };
@@ -333,13 +327,13 @@ const MyCreationsPage = () => {
   const handleDownload = (creation: UserCreation) => {
     // In a real app, this would initiate a download
     console.log(`Downloading ${creation.title}`);
-    alert(`Downloading "${creation.title}". This is a mock implementation.`);
+    // alert(t("Info.downloadFailed", { title: creation.title }));
   };
 
   const handlePublish = (creation: UserCreation) => {
     // In a real app, this would publish the creation
     console.log(`Publishing ${creation.title}`);
-    alert(`Publishing "${creation.title}". This is a mock implementation.`);
+    // alert(t("Info.publishFailed", { title: creation.title }));
   };
 
   const handlePreview = (creation: UserCreation) => {
@@ -347,27 +341,25 @@ const MyCreationsPage = () => {
     setPreviewDialogOpen(true);
   };
 
-  // 如果正在加载，显示加载状态
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="ml-4 text-xl">正在加载您的创作...</p>
+        <p className="ml-4 text-xl">{t("Info.loadingCreations")}</p>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="mb-6 text-3xl font-bold">我的创作</h1>
+      <h1 className="mb-6 text-3xl font-bold">{t("title")}</h1>
 
-      {/* 搜索和排序栏 */}
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="搜索创作..."
+            placeholder={t("search")}
             className="pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -389,25 +381,24 @@ const MyCreationsPage = () => {
           >
             <SelectTrigger className="h-9 w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="排序方式" />
+              <SelectValue placeholder={t("sortBy")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest">最新优先</SelectItem>
-              <SelectItem value="oldest">最早优先</SelectItem>
-              <SelectItem value="a-z">按名称 (A-Z)</SelectItem>
-              <SelectItem value="z-a">按名称 (Z-A)</SelectItem>
-              <SelectItem value="starred">收藏优先</SelectItem>
+              <SelectItem value="newest">{t("newest")}</SelectItem>
+              <SelectItem value="oldest">{t("oldest")}</SelectItem>
+              <SelectItem value="a-z">{t("a-z")}</SelectItem>
+              <SelectItem value="z-a">{t("z-a")}</SelectItem>
+              <SelectItem value="starred">{t("starred")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      {/* 标签页 */}
       <Tabs defaultValue="all" className="mb-8">
         <TabsList className="mb-4">
-          <TabsTrigger value="all">全部</TabsTrigger>
-          <TabsTrigger value="video">视频</TabsTrigger>
-          <TabsTrigger value="image">图像</TabsTrigger>
+          <TabsTrigger value="all">{t("all")}</TabsTrigger>
+          <TabsTrigger value="video">{t("video")}</TabsTrigger>
+          <TabsTrigger value="image">{t("image")}</TabsTrigger>
         </TabsList>
 
         {["all", "video", "image"].map((tab) => (
@@ -415,11 +406,13 @@ const MyCreationsPage = () => {
             {filteredCreations.length === 0 ? (
               <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
                 <Film className="mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="mb-2 text-xl font-medium">没有找到创作</h3>
+                <h3 className="mb-2 text-xl font-medium">
+                  {t("noCreationsFound")}
+                </h3>
                 <p className="text-muted-foreground">
                   {searchQuery
-                    ? `没有找到与"${searchQuery}"相关的创作`
-                    : "您还没有创建任何内容"}
+                    ? t("noCreationsFoundSearch", { query: searchQuery })
+                    : t("noCreationsFound")}
                 </p>
               </div>
             ) : (
@@ -468,18 +461,20 @@ const MyCreationsPage = () => {
                               className="flex items-center gap-1"
                             >
                               <Loader2 className="h-3 w-3 animate-spin" />
-                              生成中
+                              {t("generating")}
                             </Badge>
                           )}
                           {creation.status === "failed" && (
-                            <Badge variant="destructive">生成失败</Badge>
+                            <Badge variant="destructive">
+                              {t("generateFailed")}
+                            </Badge>
                           )}
                           {creation.type === "video" && (
                             <Badge
                               variant="secondary"
                               className="bg-blue-500 text-white"
                             >
-                              视频
+                              {t("video")}
                             </Badge>
                           )}
                           {creation.type === "image" && (
@@ -487,7 +482,7 @@ const MyCreationsPage = () => {
                               variant="secondary"
                               className="bg-green-500 text-white"
                             >
-                              图像
+                              {t("image")}
                             </Badge>
                           )}
                         </div>
@@ -548,7 +543,7 @@ const MyCreationsPage = () => {
                                 }}
                               >
                                 <Edit className="mr-2 h-4 w-4" />
-                                重命名
+                                {t("rename")}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={(e) => {
@@ -557,7 +552,7 @@ const MyCreationsPage = () => {
                                 }}
                               >
                                 <Download className="mr-2 h-4 w-4" />
-                                下载
+                                {t("download")}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={(e) => {
@@ -566,7 +561,7 @@ const MyCreationsPage = () => {
                                 }}
                               >
                                 <Share2 className="mr-2 h-4 w-4" />
-                                发布
+                                {t("publish")}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -577,7 +572,7 @@ const MyCreationsPage = () => {
                                 }}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                删除
+                                {t("delete")}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -586,7 +581,7 @@ const MyCreationsPage = () => {
                           {creation.prompt || creation.description}
                         </p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          创建于{" "}
+                          {t("createdOn")}{" "}
                           {new Date(creation.createdAt).toLocaleDateString(
                             "zh-CN",
                             {
@@ -601,7 +596,7 @@ const MyCreationsPage = () => {
                   ))}
                 </div>
 
-                {/* 分页控制 */}
+                {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="mt-8 flex items-center justify-center gap-2">
                     <Button
@@ -615,7 +610,7 @@ const MyCreationsPage = () => {
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <div className="text-sm">
-                      第 {currentPage} 页，共 {totalPages} 页
+                      {t("pageInfo", { currentPage, totalPages })}
                     </div>
                     <Button
                       variant="outline"
@@ -635,47 +630,47 @@ const MyCreationsPage = () => {
         ))}
       </Tabs>
 
-      {/* 重命名对话框 */}
+      {/* Rename Dialog */}
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>重命名创作</DialogTitle>
+            <DialogTitle>{t("renameCreation")}</DialogTitle>
           </DialogHeader>
           <Input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="输入新名称"
+            placeholder={t("renamePlaceholder")}
             className="my-4"
           />
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">取消</Button>
+              <Button variant="outline">{t("cancel")}</Button>
             </DialogClose>
-            <Button onClick={handleConfirmRename}>保存</Button>
+            <Button onClick={handleConfirmRename}>{t("save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* 删除确认对话框 */}
+      {/* Delete Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>确认删除</DialogTitle>
+            <DialogTitle>{t("deleteConfirmation")}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            您确定要删除
+            {t("deleteConfirmationText")}
             <span className="font-medium">
               {" "}
               &ldquo;{selectedCreation?.title}&rdquo;{" "}
             </span>
-            吗？ 此操作无法撤消。
+            {t("deleteConfirmationText2")}
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">取消</Button>
+              <Button variant="outline">{t("cancel")}</Button>
             </DialogClose>
             <Button variant="destructive" onClick={handleConfirmDelete}>
-              删除
+              {t("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -711,7 +706,7 @@ const MyCreationsPage = () => {
               {selectedCreation?.prompt}
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              创建于{" "}
+              {t("createdOn")}{" "}
               {selectedCreation?.createdAt
                 ? new Date(selectedCreation.createdAt).toLocaleDateString(
                     "zh-CN",
@@ -726,13 +721,13 @@ const MyCreationsPage = () => {
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">关闭</Button>
+              <Button variant="outline">{t("cancel")}</Button>
             </DialogClose>
             {selectedCreation?.status === "completed" && (
               <Button asChild>
                 <a href={selectedCreation.url} download>
                   <Download className="w-4 h-4 mr-2" />
-                  下载
+                  {t("download")}
                 </a>
               </Button>
             )}

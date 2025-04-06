@@ -1,11 +1,11 @@
-// src/components/layout/header.tsx
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
-import Link from "next/link";
+import { Sparkles, Globe, ChevronDown } from "lucide-react";
+import { Link, useRouter, usePathname } from "@/i18n/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Login from "@/components/login";
@@ -19,9 +19,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   className,
   ...props
 }) => {
+  const t = useTranslations("Header");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const languageDropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Use the auth provider
   const { user, isAuthenticated, logout, getAvatarUrl, getUserInitials } =
@@ -31,31 +36,48 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     setDropdownOpen(!dropdownOpen);
   };
 
-  useEffect(() => {
-    if (dropdownOpen) {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (
-          dropdownRef.current &&
-          !dropdownRef.current.contains(event.target as Node)
-        ) {
-          setDropdownOpen(false);
-        }
-      };
+  const toggleLanguageDropdown = () => {
+    setLanguageDropdownOpen(!languageDropdownOpen);
+  };
 
+  const changeLanguage = (locale: string) => {
+    router.push(pathname, { locale });
+    setLanguageDropdownOpen(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Handle user dropdown
+      if (
+        dropdownOpen &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setDropdownOpen(false);
+      }
+
+      // Handle language dropdown
+      if (
+        languageDropdownOpen &&
+        languageDropdownRef.current &&
+        !languageDropdownRef.current.contains(event.target as Node)
+      ) {
+        setLanguageDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen || languageDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
-  }, [dropdownOpen]);
+  }, [dropdownOpen, languageDropdownOpen]);
 
-  // 处理登出
   const handleLogout = async () => {
     await logout();
     setDropdownOpen(false);
   };
-
-  // User display functions are now provided by the auth provider
 
   return (
     <header
@@ -84,16 +106,52 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           >
             <Link href="/text-to-video">
               <Sparkles className="h-4 w-4 mr-2 text-primary" />
-              <span>创建视频</span>
+              <span>{t("createVideo")}</span>
             </Link>
           </Button>
+
+          {/* Language Selector */}
+          <div className="relative" ref={languageDropdownRef}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1 px-2"
+              onClick={toggleLanguageDropdown}
+            >
+              <Globe className="h-4 w-4" />
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+
+            {languageDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-32 rounded-md shadow-lg py-1 z-50 bg-background">
+                <div
+                  className="block px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => changeLanguage("en")}
+                >
+                  English
+                </div>
+                <div
+                  className="block px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => changeLanguage("zh")}
+                >
+                  中文
+                </div>
+                <div
+                  className="block px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() => changeLanguage("fr")}
+                >
+                  Français
+                </div>
+              </div>
+            )}
+          </div>
 
           {!isAuthenticated && (
             <Button
               className="bg-gradient-to-r from-primary to-blue-600 hover:opacity-90 shadow-md transition-all cursor-pointer"
               onClick={() => setShowLogin(true)}
             >
-              登录
+              {t("login")}
             </Button>
           )}
 
@@ -120,19 +178,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                       href="/user/profile"
                       className="block px-4 py-2 text-sm"
                     >
-                      个人中心
+                      {t("profile")}
                     </Link>
                     <Link
                       href="/user/creation"
                       className="block px-4 py-2 text-sm"
                     >
-                      我的创作
+                      {t("creation")}
                     </Link>
                     <div
                       onClick={handleLogout}
                       className="block px-4 py-2 text-sm cursor-pointer"
                     >
-                      退出登录
+                      {t("logout")}
                     </div>
                   </>
                 ) : (
@@ -140,7 +198,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     onClick={() => setShowLogin(true)}
                     className="block px-4 py-2 text-sm cursor-pointer"
                   >
-                    登录
+                    {t("login")}
                   </div>
                 )}
               </div>

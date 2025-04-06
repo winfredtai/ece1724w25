@@ -9,7 +9,7 @@ export default function AuthCodeError() {
   const router = useRouter();
   const [countdown, setCountdown] = useState(10);
 
-  // 自动重定向倒计时
+  // Auto-redirect countdown timer
   useEffect(() => {
     if (countdown <= 0) {
       router.push("/");

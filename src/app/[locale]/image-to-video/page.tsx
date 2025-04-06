@@ -16,6 +16,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 
 interface VideoGenerationParams {
   prompt: string;
@@ -25,6 +26,7 @@ interface VideoGenerationParams {
 }
 
 const ImageToVideoPage: React.FC = () => {
+  const t = useTranslations("ImageToVideo");
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -58,7 +60,7 @@ const ImageToVideoPage: React.FC = () => {
     if (file) {
       // Validate file size
       if (file.size > 10 * 1024 * 1024) {
-        toast.error("文件大小不能超过 10MB");
+        toast.error(t("Error.fileSizeTooLarge"));
         return;
       }
 
@@ -69,7 +71,7 @@ const ImageToVideoPage: React.FC = () => {
     }
   };
 
-  // 在handleFileChange下方添加拖拽处理函数
+  // Handle drag over
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -82,20 +84,20 @@ const ImageToVideoPage: React.FC = () => {
     if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
       const file = event.dataTransfer.files[0];
 
-      // 验证文件类型
+      // Validate file type
       if (!file.type.match("image/jpeg") && !file.type.match("image/png")) {
-        toast.error("请上传JPG或PNG格式的图片");
+        toast.error(t("Error.invalidFileType"));
         return;
       }
 
-      // 验证文件大小
+      // Validate file size
       if (file.size > 10 * 1024 * 1024) {
-        toast.error("文件大小不能超过 10MB");
+        toast.error(t("Error.fileSizeTooLarge"));
         return;
       }
 
       setSelectedFile(file);
-      // 创建预览URL
+      // Create preview URL
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
     }
@@ -113,12 +115,12 @@ const ImageToVideoPage: React.FC = () => {
   // Generate video
   const generateVideo = async () => {
     if (!selectedFile) {
-      toast.error("请选择图片");
+      toast.error(t("Error.fileRequired"));
       return;
     }
 
     if (!params.prompt) {
-      toast.error("请输入提示词");
+      toast.error(t("Error.promptRequired"));
       return;
     }
 
@@ -132,9 +134,8 @@ const ImageToVideoPage: React.FC = () => {
       if (params.negative_prompt) {
         formData.append("negative_prompt", params.negative_prompt);
       }
-      formData.append("cfg", "0.3"); // 默认值
+      formData.append("cfg", "0.3");
 
-      // 根据选择的模型和时长确定 API 路径
       let apiPath = "/api/kling/i2v";
       if (model === "high-quality") {
         apiPath += "/hq";
@@ -148,22 +149,21 @@ const ImageToVideoPage: React.FC = () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "生成失败");
+        throw new Error(error.error || t("Error.generateFailed"));
       }
 
       const data = await response.json();
       console.log("Generation result:", data);
 
-      toast.success("视频生成请求已发送");
+      toast.success(t("generateSuccess"));
 
-      // 可以跳转到任务详情页
       if (data.taskId) {
         router.push(`/user/creation?taskId=${data.taskId}`);
       }
     } catch (error) {
       console.error("Generation error:", error);
       toast.error(
-        error instanceof Error ? error.message : "生成失败，请稍后重试",
+        error instanceof Error ? error.message : t("Error.generateFailed"),
       );
     } finally {
       setIsGenerating(false);
@@ -174,14 +174,14 @@ const ImageToVideoPage: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       <Toaster position="top-right" />
 
-      <h1 className="text-2xl font-bold mb-6">图片生成视频</h1>
+      <h1 className="text-2xl font-bold mb-6">{t("title")}</h1>
 
       <Card className="max-w-2xl mx-auto">
         <CardContent className="p-6">
           <div className="space-y-6">
             {/* Image Upload */}
             <div className="space-y-2">
-              <Label htmlFor="image">上传图片</Label>
+              <Label htmlFor="image">{t("uploadImage")}</Label>
               <div
                 className="flex flex-col items-center p-4 border-2 border-dashed rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                 onDragOver={handleDragOver}
@@ -209,12 +209,12 @@ const ImageToVideoPage: React.FC = () => {
                       variant="outline"
                       className="mt-2"
                       onClick={(e) => {
-                        e.stopPropagation(); // 阻止事件冒泡
+                        e.stopPropagation();
                         setSelectedFile(null);
                         setPreviewUrl(null);
                       }}
                     >
-                      重新选择
+                      {t("reselect")}
                     </Button>
                   </div>
                 ) : (
@@ -239,10 +239,10 @@ const ImageToVideoPage: React.FC = () => {
                         <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
                       </svg>
                       <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                        拖拽上传图片
+                        {t("dragUploadImage")}
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        支持 JPG/PNG 格式，文件大小不超过 10MB
+                        {t("supportFormat")}
                       </div>
                       <Button
                         variant="outline"
@@ -254,7 +254,7 @@ const ImageToVideoPage: React.FC = () => {
                         }}
                         className="mt-3"
                       >
-                        选择图片
+                        {t("selectImage")}
                       </Button>
                     </div>
                   </div>
@@ -264,11 +264,11 @@ const ImageToVideoPage: React.FC = () => {
 
             {/* Prompt Input */}
             <div className="space-y-2">
-              <Label htmlFor="prompt">提示词</Label>
+              <Label htmlFor="prompt">{t("prompt")}</Label>
               <Textarea
                 id="prompt"
                 name="prompt"
-                placeholder="请输入详细的场景描述..."
+                placeholder={t("Placeholder.prompt")}
                 value={params.prompt}
                 onChange={handleInputChange}
                 className="min-h-[100px]"
@@ -277,11 +277,11 @@ const ImageToVideoPage: React.FC = () => {
 
             {/* Negative Prompt Input */}
             <div className="space-y-2">
-              <Label htmlFor="negative_prompt">反向提示词（可选）</Label>
+              <Label htmlFor="negative_prompt">{t("negative_prompt")}</Label>
               <Textarea
                 id="negative_prompt"
                 name="negative_prompt"
-                placeholder="请输入不想在视频中出现的内容..."
+                placeholder={t("Placeholder.negative_prompt")}
                 value={params.negative_prompt}
                 onChange={handleInputChange}
               />
@@ -289,7 +289,7 @@ const ImageToVideoPage: React.FC = () => {
 
             {/* Model Selection */}
             <div className="space-y-2">
-              <Label htmlFor="model">选择模型</Label>
+              <Label htmlFor="model">{t("model")}</Label>
               <Select
                 value={model}
                 onValueChange={(value: "standard" | "high-quality") =>
@@ -297,28 +297,30 @@ const ImageToVideoPage: React.FC = () => {
                 }
               >
                 <SelectTrigger id="model">
-                  <SelectValue placeholder="选择模型" />
+                  <SelectValue placeholder={"standard"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="standard">标准质量</SelectItem>
-                  <SelectItem value="high-quality">高质量</SelectItem>
+                  <SelectItem value="standard">{t("standard")}</SelectItem>
+                  <SelectItem value="high-quality">
+                    {t("high-quality")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Duration Selection */}
             <div className="space-y-2">
-              <Label htmlFor="duration">视频时长</Label>
+              <Label htmlFor="duration">{t("duration")}</Label>
               <Select
                 value={duration}
                 onValueChange={(value: "5s" | "10s") => setDuration(value)}
               >
                 <SelectTrigger id="duration">
-                  <SelectValue placeholder="选择时长" />
+                  <SelectValue placeholder={"5s"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="5s">5秒</SelectItem>
-                  <SelectItem value="10s">10秒</SelectItem>
+                  <SelectItem value="5s">{t("5s")}</SelectItem>
+                  <SelectItem value="10s">{t("10s")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -332,10 +334,10 @@ const ImageToVideoPage: React.FC = () => {
               {isGenerating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  生成中...
+                  {t("generateInProgress")}
                 </>
               ) : (
-                "开始生成"
+                t("startGenerating")
               )}
             </Button>
           </div>

@@ -13,6 +13,7 @@ import { toast, Toaster } from "sonner";
 import { generateVideo } from "@/services/video";
 import { useAuth } from "@/components/authProvider";
 import { createClient } from "@/utils/supabase/client";
+import { useTranslations } from "next-intl";
 
 interface VideoGenerationParams {
   prompt: string;
@@ -33,6 +34,7 @@ const TextToVideoPage: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
   const [credits, setCredits] = useState<UserCredits | null>(null);
+  const t = useTranslations("TextToVideo");
 
   // State management
   const [params, setParams] = useState<VideoGenerationParams>({
@@ -101,20 +103,20 @@ const TextToVideoPage: React.FC = () => {
   // Generate video
   const handleGenerateVideo = async () => {
     if (!params.prompt) {
-      toast.error("请输入提示词");
+      toast.error(t("Error.promptRequired"));
       return;
     }
 
     if (!isAuthenticated || !user) {
-      toast.error("请先登录后再生成视频");
+      toast.error(t("Error.loginRequired"));
       router.push("/login");
       return;
     }
 
     const requiredCredits = getRequiredCredits();
     if (!credits || credits.credits_balance < requiredCredits) {
-      toast.error(`积分不足，需要 ${requiredCredits} 积分`);
-      router.push("/user/profile"); // 跳转到个人中心，用户可以在那里购买积分
+      toast.error(t("Error.insufficientCredits"));
+      router.push("/user/profile");
       return;
     }
 
@@ -134,19 +136,19 @@ const TextToVideoPage: React.FC = () => {
 
       setCredits(data || { credits_balance: 0, total_credits_used: 0 });
 
-      toast.success("视频生成请求已发送");
-      router.push(`/user/creation`); // 跳转到创作列表页面
+      toast.success(t("generateInProgress"));
+      router.push(`/user/creation`);
     } catch (error) {
       console.error("Video generation error:", error);
       if (
         error instanceof Error &&
         error.message.includes("Insufficient credits")
       ) {
-        toast.error("积分不足，请先购买积分");
+        toast.error(t("Error.insufficientCredits"));
         router.push("/user/profile");
       } else {
         toast.error(
-          error instanceof Error ? error.message : "生成失败，请稍后重试",
+          error instanceof Error ? error.message : t("generateFailed"),
         );
       }
     } finally {
@@ -164,13 +166,13 @@ const TextToVideoPage: React.FC = () => {
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-8">
             <Film className="h-6 w-6" />
-            <h1 className="text-3xl font-bold">文本生成视频</h1>
+            <h1 className="text-3xl font-bold">{t("title")}</h1>
           </div>
 
           <div className="space-y-6">
             {/* Model Selection */}
             <div className="space-y-2">
-              <Label>选择模型</Label>
+              <Label>{t("model")}</Label>
               <RadioGroup
                 value={params.model}
                 onValueChange={(value) => handleRadioChange("model", value)}
@@ -182,7 +184,9 @@ const TextToVideoPage: React.FC = () => {
                 </div>
                 <div className="flex items-center space-x-2 opacity-50">
                   <RadioGroupItem value="runaway" id="model-runaway" disabled />
-                  <Label htmlFor="model-runaway">Runaway (即将上线)</Label>
+                  <Label htmlFor="model-runaway">
+                    Runaway {t("comingSoon")}
+                  </Label>
                 </div>
                 <div className="flex items-center space-x-2 opacity-50">
                   <RadioGroupItem
@@ -191,7 +195,7 @@ const TextToVideoPage: React.FC = () => {
                     disabled
                   />
                   <Label htmlFor="model-stability">
-                    Stability AI (即将上线)
+                    Stability AI {t("comingSoon")}
                   </Label>
                 </div>
               </RadioGroup>
@@ -199,11 +203,11 @@ const TextToVideoPage: React.FC = () => {
 
             {/* Prompt Input */}
             <div className="space-y-2">
-              <Label htmlFor="prompt">提示词</Label>
+              <Label htmlFor="prompt">{t("prompt")}</Label>
               <Textarea
                 id="prompt"
                 name="prompt"
-                placeholder="请输入详细的场景描述..."
+                placeholder={t("Placeholder.prompt")}
                 value={params.prompt}
                 onChange={handleInputChange}
                 className="min-h-[100px]"
@@ -212,11 +216,11 @@ const TextToVideoPage: React.FC = () => {
 
             {/* Negative Prompt Input */}
             <div className="space-y-2">
-              <Label htmlFor="negative_prompt">反向提示词（可选）</Label>
+              <Label htmlFor="negative_prompt">{t("negative_prompt")}</Label>
               <Textarea
                 id="negative_prompt"
                 name="negative_prompt"
-                placeholder="请输入不想在视频中出现的内容..."
+                placeholder={t("Placeholder.negative_prompt")}
                 value={params.negative_prompt}
                 onChange={handleInputChange}
               />
@@ -224,7 +228,7 @@ const TextToVideoPage: React.FC = () => {
 
             {/* Quality Selection */}
             <div className="space-y-2">
-              <Label>视频质量</Label>
+              <Label>{t("quality")}</Label>
               <RadioGroup
                 value={params.quality}
                 onValueChange={(value) => handleRadioChange("quality", value)}
@@ -232,18 +236,18 @@ const TextToVideoPage: React.FC = () => {
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="normal" id="quality-normal" />
-                  <Label htmlFor="quality-normal">标准质量</Label>
+                  <Label htmlFor="quality-normal">{t("standard")}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="hq" id="quality-hq" />
-                  <Label htmlFor="quality-hq">高清质量</Label>
+                  <Label htmlFor="quality-hq">{t("high-quality")}</Label>
                 </div>
               </RadioGroup>
             </div>
 
             {/* Duration Selection */}
             <div className="space-y-2">
-              <Label>视频时长</Label>
+              <Label>{t("duration")}</Label>
               <RadioGroup
                 value={params.duration}
                 onValueChange={(value) => handleRadioChange("duration", value)}
@@ -251,18 +255,18 @@ const TextToVideoPage: React.FC = () => {
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="5s" id="duration-5s" />
-                  <Label htmlFor="duration-5s">5秒</Label>
+                  <Label htmlFor="duration-5s">{t("5s")}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="10s" id="duration-10s" />
-                  <Label htmlFor="duration-10s">10秒</Label>
+                  <Label htmlFor="duration-10s">{t("10s")}</Label>
                 </div>
               </RadioGroup>
             </div>
 
             {/* Aspect Ratio Selection */}
             <div className="space-y-2">
-              <Label>视频比例</Label>
+              <Label>{t("aspectRatio")}</Label>
               <RadioGroup
                 value={params.aspect_ratio}
                 onValueChange={(value) =>
@@ -272,15 +276,15 @@ const TextToVideoPage: React.FC = () => {
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="1:1" id="ratio-1-1" />
-                  <Label htmlFor="ratio-1-1">1:1 正方形</Label>
+                  <Label htmlFor="ratio-1-1">1:1 {t("square")}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="16:9" id="ratio-16-9" />
-                  <Label htmlFor="ratio-16-9">16:9 横屏</Label>
+                  <Label htmlFor="ratio-16-9">16:9 {t("landscape")}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="9:16" id="ratio-9-16" />
-                  <Label htmlFor="ratio-9-16">9:16 竖屏</Label>
+                  <Label htmlFor="ratio-9-16">9:16 {t("portrait")}</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -295,12 +299,12 @@ const TextToVideoPage: React.FC = () => {
               {isGenerating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  生成中...
+                  {t("generateInProgress")}
                 </>
               ) : (
                 <>
                   <Film className="mr-2 h-4 w-4" />
-                  生成视频
+                  {t("startGenerating")}
                 </>
               )}
             </Button>

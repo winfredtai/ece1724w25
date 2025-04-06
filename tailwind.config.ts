@@ -8,9 +8,7 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
-        // 自定义颜色
-      },
+      colors: {},
     },
   },
   plugins: [],

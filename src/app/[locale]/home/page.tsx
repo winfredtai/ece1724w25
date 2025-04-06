@@ -16,6 +16,7 @@ import {
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 
 // Types
 interface CarouselItem {
@@ -52,7 +53,8 @@ interface ExploreCategory {
 }
 
 const HomePage: React.FC = () => {
-  // Carousel (走马灯) data
+  const t = useTranslations("Home");
+  // Carousel data
   const carouselItems: CarouselItem[] = [
     {
       id: 1,
@@ -339,7 +341,6 @@ const HomePage: React.FC = () => {
     setExpandedCategory(expandedCategory === categoryId ? null : categoryId);
   };
 
-  // 增强渲染卡片的函数
   const renderFeatureCard = (card: FeatureCard) => (
     <Card
       key={card.id}
@@ -377,7 +378,6 @@ const HomePage: React.FC = () => {
 
   // This function was previously used but is now replaced with direct rendering
 
-  // 展示区块样式封装
   // const SectionContainer = ({ children, title, subtitle, className = '' }: {
   //   children: React.ReactNode,
   //   title: string,
@@ -461,7 +461,7 @@ const HomePage: React.FC = () => {
                       variant="outline"
                       className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20"
                     >
-                      Learn More
+                      {t("learnMore")}
                     </Button>
                   </div>
                 </div>
@@ -809,21 +809,20 @@ const HomePage: React.FC = () => {
               variant="outline"
               className="mb-4 bg-white/20 text-white border-white/30 px-4 py-1"
             >
-              Start Today
+              {t("startToday")}
             </Badge>
             <h2 className="text-3xl md:text-4xl font-bold mb-6 tracking-tight">
-              Ready to Create Your AI Masterpiece?
+              {t("readyToCreate")}
             </h2>
             <p className="text-xl mb-10 max-w-2xl mx-auto opacity-90">
-              Join thousands of creators who are pushing the boundaries of
-              what&apos;s possible with AI-generated content.
+              {t("joinCreators")}
             </p>
             <Button
               variant="secondary"
               size="lg"
               className="px-8 py-6 text-lg shadow-xl hover:shadow-2xl transition-all duration-300 bg-white text-primary hover:bg-white/90 backdrop-blur-sm text-black"
             >
-              Get Started for Free
+              {t("getStarted")}
             </Button>
           </div>
         </div>
@@ -843,9 +842,7 @@ const HomePage: React.FC = () => {
                 </Badge>
                 Karavideo.ai
               </h3>
-              <p className="text-muted-foreground">
-                Transforming ideas into visual reality with AI.
-              </p>
+              <p className="text-muted-foreground">{t("footerDescription")}</p>
               <div className="flex gap-4 mt-6">
                 {/* Social media icons */}
                 <Button
@@ -897,7 +894,7 @@ const HomePage: React.FC = () => {
             </div>
             <div>
               <h4 className="font-bold mb-4 text-sm uppercase tracking-wider text-muted-foreground">
-                Product
+                {t("product")}
               </h4>
               <ul className="space-y-3">
                 <li>
@@ -905,7 +902,7 @@ const HomePage: React.FC = () => {
                     variant="link"
                     className="p-0 h-auto text-muted-foreground hover:text-primary"
                   >
-                    Features
+                    {t("features")}
                   </Button>
                 </li>
                 <li>
@@ -913,7 +910,7 @@ const HomePage: React.FC = () => {
                     variant="link"
                     className="p-0 h-auto text-muted-foreground hover:text-primary"
                   >
-                    Pricing
+                    {t("pricing")}
                   </Button>
                 </li>
                 <li>
@@ -921,14 +918,14 @@ const HomePage: React.FC = () => {
                     variant="link"
                     className="p-0 h-auto text-muted-foreground hover:text-primary"
                   >
-                    API
+                    {t("api")}
                   </Button>
                 </li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold mb-4 text-sm uppercase tracking-wider text-muted-foreground">
-                Resources
+                {t("resources")}
               </h4>
               <ul className="space-y-3">
                 <li>
@@ -936,7 +933,7 @@ const HomePage: React.FC = () => {
                     variant="link"
                     className="p-0 h-auto text-muted-foreground hover:text-primary"
                   >
-                    Documentation
+                    {t("documentation")}
                   </Button>
                 </li>
                 <li>
@@ -944,7 +941,7 @@ const HomePage: React.FC = () => {
                     variant="link"
                     className="p-0 h-auto text-muted-foreground hover:text-primary"
                   >
-                    Blog
+                    {t("blog")}
                   </Button>
                 </li>
                 <li>
@@ -952,14 +949,14 @@ const HomePage: React.FC = () => {
                     variant="link"
                     className="p-0 h-auto text-muted-foreground hover:text-primary"
                   >
-                    Community
+                    {t("community")}
                   </Button>
                 </li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold mb-4 text-sm uppercase tracking-wider text-muted-foreground">
-                Connect
+                {t("connect")}
               </h4>
               <ul className="space-y-3">
                 <li>
@@ -997,19 +994,19 @@ const HomePage: React.FC = () => {
                 variant="link"
                 className="p-0 h-auto text-muted-foreground hover:text-primary text-sm"
               >
-                Privacy Policy
+                {t("privacyPolicy")}
               </Button>
               <Button
                 variant="link"
                 className="p-0 h-auto text-muted-foreground hover:text-primary text-sm"
               >
-                Terms of Service
+                {t("termsOfService")}
               </Button>
               <Button
                 variant="link"
                 className="p-0 h-auto text-muted-foreground hover:text-primary text-sm"
               >
-                Cookie Policy
+                {t("cookiePolicy")}
               </Button>
             </div>
           </div>

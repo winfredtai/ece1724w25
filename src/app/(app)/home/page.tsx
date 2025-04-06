@@ -189,29 +189,6 @@ const VideoCard: React.FC<{ video: VideoItem }> = ({ video }) => {
   );
 };
 
-// 添加动画样式到文件顶部的 import 区域下
-const animations = `
-@keyframes pulse {
-  0% {
-    opacity: 0.4;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.1);
-  }
-  100% {
-    opacity: 0.4;
-    transform: scale(1);
-  }
-}
-`;
-
-// 添加样式标签到组件
-const styleTag = document.createElement('style');
-styleTag.textContent = animations;
-document.head.appendChild(styleTag);
-
 export default function HomePage() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -262,21 +239,24 @@ export default function HomePage() {
       title: "AI 视频生成",
       description: "只需输入文本描述，即可生成精彩的视频内容",
       image: "/images/carousel/text-to-video.jpg",
-      videoUrl: "https://cdn.openai.com/sora/landing-page/md/014-9_20241122_1737_Whales%20Soaring%20Skyward_remix_01jdban9ykevctk8csk530rqmc.mp4.mp4"
+      videoUrl:
+        "https://cdn.openai.com/sora/landing-page/md/014-9_20241122_1737_Whales%20Soaring%20Skyward_remix_01jdban9ykevctk8csk530rqmc.mp4.mp4",
     },
     {
       id: 2,
       title: "多场景视频制作",
       description: "支持多种场景风格，让您的创意无限绽放",
       image: "/images/carousel/text-to-video.jpg",
-      videoUrl: "https://cdn.openai.com/sora/landing-page/md/004-Slack_13_assets_task_01jd7x3embfre84ebggt0r4f24_task_01jd7x3embfre84ebggt0r4f24_genid_7597d81b-a033-4b25-85f1-1d8d924686ba_24_11_21_17_43_314345_videos_00000_107724_s.mp4.mp4"
+      videoUrl:
+        "https://cdn.openai.com/sora/landing-page/md/004-Slack_13_assets_task_01jd7x3embfre84ebggt0r4f24_task_01jd7x3embfre84ebggt0r4f24_genid_7597d81b-a033-4b25-85f1-1d8d924686ba_24_11_21_17_43_314345_videos_00000_107724_s.mp4.mp4",
     },
     {
       id: 3,
       title: "一键生成视频",
       description: "简单易用的界面，让视频创作变得轻而易举",
       image: "/images/carousel/text-to-video.jpg",
-      videoUrl: "https://cdn.openai.com/sora/landing-page/md/009-9_20240924_1806_Eerie%20Submarine%20Ruins_storyboard_01j8kbe4htf0sarh18w85y61r5.mp4.mp4"
+      videoUrl:
+        "https://cdn.openai.com/sora/landing-page/md/009-9_20240924_1806_Eerie%20Submarine%20Ruins_storyboard_01j8kbe4htf0sarh18w85y61r5.mp4.mp4",
     },
   ];
 
@@ -365,7 +345,10 @@ export default function HomePage() {
                         <polyline points="12 5 19 12 12 19" />
                       </svg>
                     </Button>
-                    <Button variant="outline" className="backdrop-blur-sm border-white/30 hover:bg-white/20 hover:border-white/50">
+                    <Button
+                      variant="outline"
+                      className="backdrop-blur-sm border-white/30 hover:bg-white/20 hover:border-white/50"
+                    >
                       了解更多
                     </Button>
                   </div>

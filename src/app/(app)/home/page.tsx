@@ -9,6 +9,7 @@ interface CarouselItem {
   title: string;
   description: string;
   image: string;
+  videoUrl?: string;
 }
 
 // 视频数据类型
@@ -188,6 +189,29 @@ const VideoCard: React.FC<{ video: VideoItem }> = ({ video }) => {
   );
 };
 
+// 添加动画样式到文件顶部的 import 区域下
+const animations = `
+@keyframes pulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+}
+`;
+
+// 添加样式标签到组件
+const styleTag = document.createElement('style');
+styleTag.textContent = animations;
+document.head.appendChild(styleTag);
+
 export default function HomePage() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -235,28 +259,24 @@ export default function HomePage() {
   const carouselItems: CarouselItem[] = [
     {
       id: 1,
-      title: "AI-Powered Image Generation",
-      description:
-        "Create stunning visuals with our state-of-the-art AI models",
-      image: "/images/carousel/ai-image-gen.jpg",
+      title: "AI 视频生成",
+      description: "只需输入文本描述，即可生成精彩的视频内容",
+      image: "/images/carousel/text-to-video.jpg",
+      videoUrl: "https://cdn.openai.com/sora/landing-page/md/014-9_20241122_1737_Whales%20Soaring%20Skyward_remix_01jdban9ykevctk8csk530rqmc.mp4.mp4"
     },
     {
       id: 2,
-      title: "Text-to-Video Transformation",
-      description: "Turn your descriptions into dynamic video content",
+      title: "多场景视频制作",
+      description: "支持多种场景风格，让您的创意无限绽放",
       image: "/images/carousel/text-to-video.jpg",
+      videoUrl: "https://cdn.openai.com/sora/landing-page/md/004-Slack_13_assets_task_01jd7x3embfre84ebggt0r4f24_task_01jd7x3embfre84ebggt0r4f24_genid_7597d81b-a033-4b25-85f1-1d8d924686ba_24_11_21_17_43_314345_videos_00000_107724_s.mp4.mp4"
     },
     {
       id: 3,
-      title: "Voice Cloning Technology",
-      description: "Generate natural-sounding voices for your projects",
-      image: "/images/carousel/voice-clone.jpg",
-    },
-    {
-      id: 4,
-      title: "3D Model Generation",
-      description: "Create 3D assets from simple text prompts",
-      image: "/images/carousel/3d-model-gen.jpg",
+      title: "一键生成视频",
+      description: "简单易用的界面，让视频创作变得轻而易举",
+      image: "/images/carousel/text-to-video.jpg",
+      videoUrl: "https://cdn.openai.com/sora/landing-page/md/009-9_20240924_1806_Eerie%20Submarine%20Ruins_storyboard_01j8kbe4htf0sarh18w85y61r5.mp4.mp4"
     },
   ];
 
@@ -288,16 +308,27 @@ export default function HomePage() {
             className={cn(
               "absolute inset-0 transition-all duration-1000",
               index === currentCarouselIndex
-                ? "opacity-100 scale-100"
-                : "opacity-0 scale-105 pointer-events-none",
+                ? "opacity-100 scale-100 z-10"
+                : "opacity-0 scale-105 pointer-events-none z-0",
             )}
           >
-            {/* Background image with overlay */}
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${item.image})` }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent"></div>
+            {/* 动态视频背景 */}
+            <div className="absolute inset-0 overflow-hidden">
+              {/* 主背景视频 */}
+              <video
+                key={item.videoUrl}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="absolute w-full h-full object-cover"
+                poster={item.image}
+              >
+                <source src={item.videoUrl} type="video/mp4" />
+              </video>
+
+              {/* 渐变叠加层 */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent"></div>
             </div>
 
             {/* Content */}
@@ -306,19 +337,19 @@ export default function HomePage() {
                 <div className="max-w-2xl text-white">
                   <Badge
                     variant="outline"
-                    className="mb-2 bg-blue-500/20 text-blue-700 border-blue-500/30 backdrop-blur-sm px-4 py-1"
+                    className="mb-2 bg-white/10 text-white border-white/20 backdrop-blur-sm px-4 py-1"
                   >
-                    Featured
+                    AI 视频生成
                   </Badge>
-                  <h1 className="text-4xl font-bold mb-2 tracking-tight">
+                  <h1 className="text-5xl font-bold mb-4 tracking-tight">
                     {item.title}
                   </h1>
-                  <p className="text-lg mb-4 text-white/80">
+                  <p className="text-xl mb-8 text-white/90 leading-relaxed">
                     {item.description}
                   </p>
                   <div className="flex gap-4">
-                    <Button className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-                      Get Started
+                    <Button className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-none shadow-lg hover:shadow-xl transition-all duration-300">
+                      立即体验
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="20"
@@ -334,8 +365,8 @@ export default function HomePage() {
                         <polyline points="12 5 19 12 12 19" />
                       </svg>
                     </Button>
-                    <Button variant="outline" className="backdrop-blur-sm">
-                      Learn More
+                    <Button variant="outline" className="backdrop-blur-sm border-white/30 hover:bg-white/20 hover:border-white/50">
+                      了解更多
                     </Button>
                   </div>
                 </div>

@@ -11,7 +11,7 @@ const ACCESS_KEY_SECRET = process.env.KLING_ACCESS_KEY_SECRET || "";
 const API_302_KEY = process.env.API_302_KEY || "";
 
 // 获取任务类型的函数
-function getTaskProvider(apiEndpoint: string | undefined): string {
+function getTaskProvider(apiEndpoint: string | null | undefined): string {
   if (!apiEndpoint) return "unknown";
 
   if (apiEndpoint.startsWith("https://api.klingai.com")) {
@@ -525,7 +525,7 @@ export async function GET() {
         let newStatus = task.status;
         let resultUrl = task.result_url;
         let thumbnailUrl = task.thumbnail_url;
-        let errorMessage = task.error_message;
+        let errorMessage: string | null = task.error_message;
 
         // Update status based on API response
         switch (apiStatus) {
@@ -541,7 +541,7 @@ export async function GET() {
             break;
           case "failed":
             newStatus = "failed";
-            errorMessage = foundTask.task_status_msg;
+            errorMessage = foundTask.task_status_msg || "任务处理失败";
             break;
           case "submitted":
             newStatus = "queued";

@@ -4,7 +4,6 @@
 import * as React from "react";
 import {
   Home,
-  Compass,
   Video,
   User,
   ChevronRight,
@@ -34,12 +33,6 @@ const getNavData = (pathname: string) => ({
       url: "/home",
       icon: <Home className="h-5 w-5" />,
       isActive: pathname === "/home",
-    },
-    {
-      title: "Explore",
-      url: "/explore",
-      icon: <Compass className="h-5 w-5" />,
-      isActive: pathname === "/explore",
     },
     {
       title: "Text to Video",

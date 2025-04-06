@@ -57,7 +57,7 @@ const VideoCard: React.FC<{ video: VideoItem }> = ({ video }) => {
   };
 
   return (
-    <Card className="overflow-hidden group relative shadow-sm hover:shadow">
+    <Card className="overflow-hidden group relative">
       <div
         className="relative aspect-video bg-black/5"
         onMouseEnter={handleMouseEnter}
@@ -126,7 +126,7 @@ const VideoCard: React.FC<{ video: VideoItem }> = ({ video }) => {
           onLoadedData={handleVideoLoad}
           onError={handleError}
           className={cn(
-            "absolute inset-0 w-full h-full object-cover",
+            "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
             !isHovered && "opacity-0",
           )}
         />
@@ -179,10 +179,15 @@ const VideoCard: React.FC<{ video: VideoItem }> = ({ video }) => {
         )}
       </div>
 
-      {/* 视频标题 */}
+      {/* 视频标题 - 只在hover时显示 */}
       {video.title && (
-        <div className="p-3">
-          <p className="text-sm line-clamp-2">{video.title}</p>
+        <div 
+          className={cn(
+            "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 transform transition-all duration-300",
+            isHovered ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
+          )}
+        >
+          <p className="text-sm text-white line-clamp-2">{video.title}</p>
         </div>
       )}
     </Card>
@@ -436,7 +441,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 // 视频列表
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6">
                   {videos.map((video) => (
                     <VideoCard key={video.id} video={video} />
                   ))}

@@ -394,7 +394,7 @@ export default function HomePage() {
             <div className="mb-8">
               {isLoading ? (
                 // 加载状态
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(480px,1fr))] gap-8">
                   {[...Array(4)].map((_, index) => (
                     <Card key={index} className="animate-pulse">
                       <div className="aspect-video bg-gray-200"></div>
@@ -441,7 +441,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 // 视频列表
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(480px,1fr))] gap-8">
                   {videos.map((video) => (
                     <VideoCard key={video.id} video={video} />
                   ))}

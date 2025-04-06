@@ -430,17 +430,23 @@ const MyCreationsPage = () => {
                         (!creation.thumbnailUrl ||
                           creation.thumbnailUrl ===
                             "/images/creations/placeholder.jpg") ? (
-                          <video
-                            src={creation.url}
-                            className="h-full w-full object-cover"
-                            width={400}
-                            height={225}
-                            muted
-                            loop
-                            playsInline
-                            onMouseOver={(e) => e.currentTarget.play()}
-                            onMouseOut={(e) => e.currentTarget.pause()}
-                          />
+                          creation.url ? (
+                            <video
+                              src={creation.url}
+                              className="h-full w-full object-cover"
+                              width={400}
+                              height={225}
+                              muted
+                              loop
+                              playsInline
+                              onMouseOver={(e) => e.currentTarget.play()}
+                              onMouseOut={(e) => e.currentTarget.pause()}
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-gray-200 flex items-center justify-center">
+                              <Film className="h-12 w-12 text-gray-400" />
+                            </div>
+                          )
                         ) : (
                           <Image
                             src={creation.thumbnailUrl}

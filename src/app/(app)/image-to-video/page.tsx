@@ -26,6 +26,7 @@ interface VideoGenerationParams {
 
 const ImageToVideoPage: React.FC = () => {
   const router = useRouter();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -63,6 +64,38 @@ const ImageToVideoPage: React.FC = () => {
 
       setSelectedFile(file);
       // Create preview URL
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
+  // 在handleFileChange下方添加拖拽处理函数
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+
+      // 验证文件类型
+      if (!file.type.match("image/jpeg") && !file.type.match("image/png")) {
+        toast.error("请上传JPG或PNG格式的图片");
+        return;
+      }
+
+      // 验证文件大小
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("文件大小不能超过 10MB");
+        return;
+      }
+
+      setSelectedFile(file);
+      // 创建预览URL
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
     }
@@ -149,51 +182,83 @@ const ImageToVideoPage: React.FC = () => {
             {/* Image Upload */}
             <div className="space-y-2">
               <Label htmlFor="image">上传图片</Label>
-              <div className="flex flex-col items-center p-4 border-2 border-dashed rounded-lg">
+              <div
+                className="flex flex-col items-center p-4 border-2 border-dashed rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
                 <input
                   type="file"
                   id="image"
+                  ref={fileInputRef}
                   accept="image/jpeg,image/png"
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <label
-                  htmlFor="image"
-                  className="cursor-pointer text-center w-full"
-                >
-                  {previewUrl ? (
-                    <div className="relative">
-                      <Image
-                        src={previewUrl}
-                        alt="Preview"
-                        width={300}
-                        height={300}
-                        className="max-h-[300px] mx-auto rounded-lg object-contain"
-                        unoptimized // Since we're using object URL
-                      />
-                      <Button
-                        variant="outline"
-                        className="mt-2"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setSelectedFile(null);
-                          setPreviewUrl(null);
-                        }}
+                {previewUrl ? (
+                  <div className="relative">
+                    <Image
+                      src={previewUrl}
+                      alt="Preview"
+                      width={300}
+                      height={300}
+                      className="max-h-[300px] mx-auto rounded-lg object-contain"
+                      unoptimized // Since we're using object URL
+                    />
+                    <Button
+                      variant="outline"
+                      className="mt-2"
+                      onClick={(e) => {
+                        e.stopPropagation(); // 阻止事件冒泡
+                        setSelectedFile(null);
+                        setPreviewUrl(null);
+                      }}
+                    >
+                      重新选择
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center w-full">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-gray-400 mb-2 h-8 w-8"
                       >
-                        重新选择
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="py-8">
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        点击或拖拽上传图片
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path>
+                        <line x1="16" x2="22" y1="5" y2="5"></line>
+                        <line x1="19" x2="19" y1="2" y2="8"></line>
+                        <circle cx="9" cy="9" r="2"></circle>
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                      </svg>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                        拖拽上传图片
                       </div>
-                      <div className="text-xs text-gray-400 mt-2">
+                      <div className="text-xs text-gray-400 mt-1">
                         支持 JPG/PNG 格式，文件大小不超过 10MB
                       </div>
+                      <Button
+                        variant="outline"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (fileInputRef.current) {
+                            fileInputRef.current.click();
+                          }
+                        }}
+                        className="mt-3"
+                      >
+                        选择图片
+                      </Button>
                     </div>
-                  )}
-                </label>
+                  </div>
+                )}
               </div>
             </div>
 

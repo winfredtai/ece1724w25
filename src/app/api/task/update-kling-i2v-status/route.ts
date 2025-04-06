@@ -91,18 +91,72 @@ interface CountRef {
 interface API302Response {
   data?: {
     status?: number;
-    works?: Array<{
-      resource?: {
-        resource?: string;
-      };
-      cover?: {
-        resource?: string;
-      };
-    }>;
+    currentTimestamp?: number;
+    message?: string;
+    modelErrCode?: string;
     task?: {
       id: string;
       status: number;
     };
+    works?: Array<{
+      resource?: {
+        resource?: string;
+        duration?: number;
+        height?: number;
+        width?: number;
+      };
+      cover?: {
+        resource?: string;
+        height?: number;
+        width?: number;
+      };
+      status?: number;
+      createTime?: number;
+    }>;
+  };
+  error?: string | null;
+  message?: string;
+  result: number;
+  status: number;
+  timestamp: number;
+}
+
+// 添加302.ai 图生视频API响应的类型定义
+interface API302I2VResponse {
+  data?: {
+    currentTimestamp?: number;
+    etaTime?: number;
+    message?: string;
+    modelErrCode?: string;
+    status?: number;
+    task?: {
+      id: string;
+      status: number;
+      createTime?: number;
+      type?: string;
+      taskInfo?: {
+        type?: string;
+        inputs?: Array<{
+          url?: string;
+          inputType?: string;
+        }>;
+      };
+    };
+    works?: Array<{
+      resource?: {
+        resource?: string;
+        duration?: number;
+        height?: number;
+        width?: number;
+      };
+      cover?: {
+        resource?: string;
+        height?: number;
+        width?: number;
+      };
+      status?: number;
+      createTime?: number;
+    }>;
   };
   error?: string | null;
   message?: string;
@@ -144,6 +198,19 @@ async function handle302Task(
       return;
     }
 
+    // 检查任务类型，确定是文生视频还是图生视频
+    const taskType = task.video_generation_task_definitions.task_type;
+    const isI2V = taskType === "i2v"; // 图生视频任务
+
+    log("Processing 302.ai task", {
+      taskId: task.id,
+      externalTaskId: task.external_task_id,
+      taskType,
+      isI2V,
+      task_additional_params:
+        task.video_generation_task_definitions.additional_params || {},
+    });
+
     // 构建任务URL
     const taskUrl = `https://api.302.ai/klingai/task/${task.external_task_id}/fetch`;
     log("Calling 302.ai API", { taskId: task.external_task_id, url: taskUrl });
@@ -168,10 +235,12 @@ async function handle302Task(
       return;
     }
 
-    const apiResponse: API302Response = await response.json();
-    log("302.ai API response received", {
+    // 根据任务类型解析响应
+    const jsonResponse = await response.json();
+
+    log("302.ai raw response", {
       taskId: task.external_task_id,
-      status: apiResponse.data?.status,
+      response: jsonResponse,
     });
 
     // 解析任务状态
@@ -180,47 +249,119 @@ async function handle302Task(
     let thumbnailUrl = task.thumbnail_url;
     let errorMessage = task.error_message;
 
-    // 更新状态基于302.ai的响应
-    if (apiResponse.result === 1) {
-      const status = apiResponse.data?.status;
+    if (isI2V) {
+      // 图生视频处理逻辑
+      const apiResponse = jsonResponse as API302I2VResponse;
 
-      switch (status) {
-        case 99: // 完成
-          newStatus = "completed";
+      log("302.ai I2V API response received", {
+        taskId: task.external_task_id,
+        status: apiResponse.data?.status,
+        taskStatus: apiResponse.data?.task?.status,
+      });
 
-          // 从返回数据中提取视频和缩略图URL
-          if (apiResponse.data?.works && apiResponse.data.works.length > 0) {
-            const work = apiResponse.data.works[0];
-            resultUrl = work.resource?.resource || resultUrl;
-            thumbnailUrl = work.cover?.resource || thumbnailUrl;
-          }
-          break;
-        case 0: // 等待中
-          newStatus = "queued";
-          break;
-        case 1: // 处理中
-        case 2: // 处理中的另一种状态
-          newStatus = "processing";
-          break;
-        case -1: // 失败
-          newStatus = "failed";
-          errorMessage = "任务处理失败";
-          break;
-        default:
-          // 默认保持当前状态
-          break;
+      // 更新状态基于302.ai的图生视频响应
+      if (apiResponse.result === 1) {
+        // 首先尝试从data.task.status获取状态
+        let status = apiResponse.data?.task?.status;
+
+        // 如果不存在，则尝试从data.status获取
+        if (status === undefined) {
+          status = apiResponse.data?.status;
+        }
+
+        switch (status) {
+          case 99: // 完成
+            newStatus = "completed";
+
+            // 从返回数据中提取视频和缩略图URL
+            if (apiResponse.data?.works && apiResponse.data.works.length > 0) {
+              const work = apiResponse.data.works[0];
+              resultUrl = work.resource?.resource || resultUrl;
+              thumbnailUrl = work.cover?.resource || thumbnailUrl;
+            }
+            break;
+          case 0: // 等待中
+          case 5: // 另一种等待中状态
+            newStatus = "queued";
+            break;
+          case 1: // 处理中
+          case 2: // 处理中的另一种状态
+            newStatus = "processing";
+            break;
+          case -1: // 失败
+            newStatus = "failed";
+            errorMessage = apiResponse.data?.message || "任务处理失败";
+            break;
+          default:
+            // 默认保持当前状态
+            log("Unknown 302.ai I2V status", { status });
+            break;
+        }
+      } else {
+        // API返回错误
+        log(
+          "302.ai I2V API returned error",
+          apiResponse.error || apiResponse.message,
+        );
+
+        if (apiResponse.status >= 400) {
+          // 处理API错误
+          handleApiFailure(task, supabase, log, successCount);
+          return;
+        }
       }
     } else {
-      // API返回错误
-      log(
-        "302.ai API returned error",
-        apiResponse.error || apiResponse.message,
-      );
+      // 文生视频处理逻辑（保持现有逻辑）
+      const apiResponse = jsonResponse as API302Response;
 
-      if (apiResponse.status >= 400) {
-        // 处理API错误
-        handleApiFailure(task, supabase, log, successCount);
-        return;
+      log("302.ai API response received", {
+        taskId: task.external_task_id,
+        status: apiResponse.data?.status,
+      });
+
+      // 更新状态基于302.ai的响应
+      if (apiResponse.result === 1) {
+        const status = apiResponse.data?.status;
+
+        switch (status) {
+          case 99: // 完成
+            newStatus = "completed";
+
+            // 从返回数据中提取视频和缩略图URL
+            if (apiResponse.data?.works && apiResponse.data.works.length > 0) {
+              const work = apiResponse.data.works[0];
+              resultUrl = work.resource?.resource || resultUrl;
+              thumbnailUrl = work.cover?.resource || thumbnailUrl;
+            }
+            break;
+          case 0: // 等待中
+          case 5: // 另一种等待中状态
+            newStatus = "queued";
+            break;
+          case 1: // 处理中
+          case 2: // 处理中的另一种状态
+            newStatus = "processing";
+            break;
+          case -1: // 失败
+            newStatus = "failed";
+            errorMessage = "任务处理失败";
+            break;
+          default:
+            // 默认保持当前状态
+            break;
+        }
+      } else {
+        // API返回错误
+        log(
+          "302.ai API returned error",
+          apiResponse.error || apiResponse.message,
+        );
+
+        if (apiResponse.status >= 400) {
+          // 处理API错误
+          handleApiFailure(task, supabase, log, successCount);
+          return;
+        }
       }
     }
 
@@ -372,6 +513,10 @@ export async function GET() {
     // Process each task
     for (const task of tasks || []) {
       try {
+        // 获取任务类型
+        const taskType = task.video_generation_task_definitions.task_type;
+        const isI2V = taskType === "i2v"; // 图生视频任务
+
         // Check if task is using supported Kling models
         let isOfficialKling = false;
         const taskApiEndpoint =
@@ -381,22 +526,30 @@ export async function GET() {
         // 获取提供商类型
         const provider = getTaskProvider(taskApiEndpoint);
 
-        // 只要是已知的提供商，都认为是有效的Kling任务
-        isOfficialKling = provider === "official" || provider === "302";
+        // 针对图生视频任务的特殊处理：如果任务ID以kling_开头，认为是302.ai的任务
+        if (isI2V && task.external_task_id?.startsWith("kling_")) {
+          isOfficialKling = true;
+        } else {
+          // 文生视频任务的常规判断：已知提供商才认为是有效任务
+          isOfficialKling = provider === "official" || provider === "302";
+        }
 
         log("Task details", {
           taskId: task.id,
           externalTaskId: task.external_task_id,
           currentStatus: task.status,
-          taskType: task.video_generation_task_definitions.task_type,
+          taskType,
           apiEndpoint: taskApiEndpoint,
           provider,
+          isI2V,
           isOfficialKling,
+          task_additional_params:
+            task.video_generation_task_definitions.additional_params || {},
         });
 
         // Skip if not an official Kling task
         if (!isOfficialKling) {
-          // log("Skipping non-official Kling task", { taskId: task.id });
+          log("Skipping non-official Kling task", { taskId: task.id });
           continue;
         }
 
@@ -434,8 +587,11 @@ export async function GET() {
           }
         }
 
-        // 根据提供商类型使用不同的API调用方式
-        if (provider === "302") {
+        // 根据提供商类型及任务类型使用不同的API调用方式
+        if (
+          provider === "302" ||
+          (isI2V && task.external_task_id?.startsWith("kling_"))
+        ) {
           // 302.ai 特定的API调用逻辑
           await handle302Task(
             task,

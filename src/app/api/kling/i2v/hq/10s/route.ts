@@ -4,8 +4,8 @@ import { AuthError, PostgrestError } from "@supabase/supabase-js";
 
 const API_KEY = process.env.API_302_KEY;
 const API_BASE_URL = process.env.API_302_BASE_URL || "https://api.302.ai";
-const API_ENDPOINT = API_BASE_URL + "/klingai/m2v_16_img2video_5s";
-const CREDITS_REQUIRED = 2; // 图生视频标准质量5秒所需积分
+const API_ENDPOINT = API_BASE_URL + "/klingai/m2v_16_img2video_hq_10s";
+const CREDITS_REQUIRED = 6; // 图生视频高清质量10秒所需积分
 
 // Define a type for loggable data
 type LoggableData =
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   const log = (message: string, data?: LoggableData | unknown) => {
     const timestamp = new Date().toISOString();
     console.log(
-      `[${timestamp}][I2V-5S] ${message}`,
+      `[${timestamp}][I2V-HQ-10S] ${message}`,
       data ? JSON.stringify(data, null, 2) : "",
     );
   };
@@ -104,6 +104,7 @@ export async function POST(request: Request) {
       user_id: user.id,
       task_type: "i2v",
       model: "kling",
+      high_quality: true,
       prompt: prompt,
       cfg: cfg || "0.3",
     });
@@ -114,14 +115,14 @@ export async function POST(request: Request) {
         user_id: user.id,
         task_type: "i2v",
         model: "kling",
-        high_quality: false,
+        high_quality: true,
         prompt: prompt,
         negative_prompt: negativePrompt || "",
         cfg: cfg ? parseFloat(cfg) : 0.3,
         credits: CREDITS_REQUIRED,
         start_img_path: "pending", // 临时路径，后续更新
         additional_params: {
-          duration: "5s",
+          duration: "10s",
           api_endpoint: API_ENDPOINT,
         },
       })
@@ -270,9 +271,22 @@ export async function POST(request: Request) {
 
     log("Task status created and verified", insertedStatus);
 
-    // 8. 返回成功响应
+    // 8. 扣除用户积分
+    const { error: creditError } = await supabase.rpc("use_credits", {
+      task_id: taskDef.id,
+      amount: CREDITS_REQUIRED,
+    });
+
+    if (creditError) {
+      log("Error deducting credits", creditError);
+      // 不中断流程，继续返回成功
+    } else {
+      log("Credits deducted successfully", { amount: CREDITS_REQUIRED });
+    }
+
+    // 9. 返回成功响应
     return NextResponse.json({
-      message: "任务创建成功",
+      message: "视频生成任务创建成功",
       taskId: taskDef.id,
       statusId: insertedStatus.id,
       status: "pending",
@@ -281,8 +295,8 @@ export async function POST(request: Request) {
     log("Unexpected error", error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "服务器内部错误",
-        details: error,
+        error:
+          error instanceof Error ? error.message : "服务器内部错误，请稍后重试",
       },
       { status: 500 },
     );

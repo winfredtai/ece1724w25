@@ -13,7 +13,7 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-### Generate supabase types
+### Generate supabase types.
 
 1. Login to supabase: `pnpm exec supabase login`
 2. Use `pnpm generate-types` to generate types in `src/types/supabase.ts`

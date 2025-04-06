@@ -52,7 +52,18 @@ export async function GET() {
           video_generation_task_statuses: Database["public"]["Tables"]["video_generation_task_statuses"]["Row"][];
         },
       ) => ({
-        ...creation,
+        id: creation.id,
+        user_id: creation.user_id,
+        task_type: creation.task_type,
+        model: creation.model,
+        high_quality: creation.high_quality,
+        prompt: creation.prompt,
+        negative_prompt: creation.negative_prompt,
+        cfg: creation.cfg,
+        credits: creation.credits,
+        created_at: creation.created_at,
+        start_img_path: creation.start_img_path,
+        additional_params: creation.additional_params,
         status:
           creation.video_generation_task_statuses?.[0]?.status || "pending",
         result_url: creation.video_generation_task_statuses?.[0]?.result_url,

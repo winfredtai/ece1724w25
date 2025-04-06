@@ -71,6 +71,7 @@ interface UserCreation {
   status: "completed" | "processing" | "failed";
   starred?: boolean;
   prompt?: string;
+  originalTaskType: string;
 }
 
 const MyCreationsPage = () => {
@@ -118,7 +119,10 @@ const MyCreationsPage = () => {
           const transformedCreations = creations.map(
             (creation: ApiCreation) => ({
               id: creation.id.toString(),
-              type: creation.task_type === "video" ? "video" : "image",
+              type:
+                creation.task_type === "video" || creation.task_type === "i2v"
+                  ? "video"
+                  : "image",
               title: creation.prompt || "Untitled",
               description: creation.prompt || "",
               thumbnailUrl:
@@ -128,6 +132,7 @@ const MyCreationsPage = () => {
               status: creation.status || "processing",
               starred: false, // We can implement this feature later
               prompt: creation.prompt || "",
+              originalTaskType: creation.task_type,
             }),
           );
 

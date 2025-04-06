@@ -132,8 +132,9 @@ export const CreationCard: React.FC<CreationCardProps> = ({
             <>
               {!isHovered && (
                 <>
-                  {(!creation.thumbnailUrl ||
-                    creation.thumbnailUrl === "/images/creations/placeholder.jpg") ? (
+                  {!creation.thumbnailUrl ||
+                  creation.thumbnailUrl ===
+                    "/images/creations/placeholder.jpg" ? (
                     creation.url ? (
                       <video
                         src={creation.url}
@@ -172,7 +173,7 @@ export const CreationCard: React.FC<CreationCardProps> = ({
                   onError={handleError}
                   className={cn(
                     "absolute inset-0 w-full h-full object-cover",
-                    !isHovered && "opacity-0"
+                    !isHovered && "opacity-0",
                   )}
                 />
               )}

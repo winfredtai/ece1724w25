@@ -65,7 +65,8 @@ const VideoCard: React.FC<{ video: VideoItem }> = ({ video }) => {
         {/* 预览内容 */}
         {!isHovered && (
           <>
-            {(!video.thumbnailUrl || video.thumbnailUrl === "/images/creations/placeholder.jpg") ? (
+            {!video.thumbnailUrl ||
+            video.thumbnailUrl === "/images/creations/placeholder.jpg" ? (
               video.videoUrl ? (
                 <video
                   ref={previewRef}
@@ -125,7 +126,7 @@ const VideoCard: React.FC<{ video: VideoItem }> = ({ video }) => {
           onError={handleError}
           className={cn(
             "absolute inset-0 w-full h-full object-cover",
-            !isHovered && "opacity-0"
+            !isHovered && "opacity-0",
           )}
         />
 
@@ -197,30 +198,30 @@ export default function HomePage() {
       try {
         setIsLoading(true);
         setError(null);
-        
-        console.log('开始获取视频数据...');
-        const response = await fetch('/api/videos/latest');
-        console.log('API响应状态:', response.status);
-        
+
+        console.log("开始获取视频数据...");
+        const response = await fetch("/api/videos/latest");
+        console.log("API响应状态:", response.status);
+
         const data = await response.json();
-        console.log('API响应数据:', data);
-        
+        console.log("API响应数据:", data);
+
         if (!response.ok) {
-          throw new Error(data.error || '获取视频失败');
+          throw new Error(data.error || "获取视频失败");
         }
 
         if (Array.isArray(data)) {
           setVideos(data);
-          console.log('成功设置视频数据:', data);
+          console.log("成功设置视频数据:", data);
         } else {
-          throw new Error('返回的数据格式不正确');
+          throw new Error("返回的数据格式不正确");
         }
       } catch (err) {
-        console.error('获取视频失败:', err);
-        setError(err instanceof Error ? err.message : '获取视频失败');
+        console.error("获取视频失败:", err);
+        setError(err instanceof Error ? err.message : "获取视频失败");
         // 如果是开发环境，显示更详细的错误信息
-        if (process.env.NODE_ENV === 'development') {
-          console.error('详细错误信息:', err);
+        if (process.env.NODE_ENV === "development") {
+          console.error("详细错误信息:", err);
         }
       } finally {
         setIsLoading(false);

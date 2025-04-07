@@ -29,7 +29,7 @@ export async function GET() {
       )
       .eq("status", "completed")
       .order("created_at", { ascending: false })
-      .limit(5)) as { data: VideoTask[] | null; error: PostgrestError | null };
+      .limit(8)) as { data: VideoTask[] | null; error: PostgrestError | null };
 
     if (error) {
       console.error("获取视频失败:", error);

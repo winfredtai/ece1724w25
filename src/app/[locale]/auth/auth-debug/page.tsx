@@ -60,7 +60,7 @@ export default function AuthDebug() {
         </Suspense>
 
         <div className="flex flex-col gap-2">
-          <Button onClick={() => router.push("/")}>返回首页</Button>
+          <Button onClick={() => router.push("/home")}>返回首页</Button>
           <Button variant="outline" onClick={() => router.back()}>
             返回上一页
           </Button>

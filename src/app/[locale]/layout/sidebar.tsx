@@ -1,7 +1,7 @@
-// src/components/layout/app-sidebar.tsx
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import {
   Home,
   Compass,
@@ -26,41 +26,41 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 
-// 更新导航数据，添加图标和激活状态
+// Use static navigation data
 const getNavData = (pathname: string) => ({
   navMain: [
     {
-      title: "Home",
+      title: "home",
       url: "/home",
       icon: <Home className="h-5 w-5" />,
       isActive: pathname === "/home",
     },
     {
-      title: "Explore",
+      title: "explore",
       url: "/explore",
       icon: <Compass className="h-5 w-5" />,
       isActive: pathname === "/explore",
     },
     {
-      title: "Text to Video",
+      title: "textToVideo",
       url: "/text-to-video",
       icon: <Video className="h-5 w-5" />,
       isActive: pathname === "/text-to-video",
     },
     {
-      title: "Image to Video",
+      title: "imageToVideo",
       url: "/image-to-video",
       icon: <Video className="h-5 w-5" />,
       isActive: pathname === "/image-to-video",
     },
     {
-      title: "AI Tools",
+      title: "aiTools",
       url: "/ai-tools",
       icon: <Lightbulb className="h-5 w-5" />,
       isActive: pathname === "/ai-tools",
     },
     {
-      title: "User",
+      title: "user",
       icon: <User className="h-5 w-5" />,
       isActive:
         pathname.startsWith("/user/creation") ||
@@ -68,13 +68,13 @@ const getNavData = (pathname: string) => ({
         pathname.startsWith("/tools"),
       items: [
         {
-          title: "My Creations",
+          title: "creation",
           url: "/user/creation",
           icon: <Sparkles className="h-4 w-4" />,
-          isActive: pathname.startsWith("/user/creation"),
+          isActive: pathname.startsWith("zh/user/creation"),
         },
         {
-          title: "Profile",
+          title: "profile",
           url: "/user/profile",
           icon: <FolderOpen className="h-4 w-4" />,
           isActive: pathname.startsWith("/user/profile"),
@@ -85,6 +85,7 @@ const getNavData = (pathname: string) => ({
 });
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const data = getNavData(pathname);
 
@@ -111,7 +112,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     >
                       {item.icon}
                     </span>
-                    <span>{item.title}</span>
+                    <span>{t(item.title)}</span>
                     {item.items?.length && (
                       <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-hover:rotate-90" />
                     )}
@@ -135,7 +136,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             >
                               {subItem.icon}
                             </span>
-                            {subItem.title}
+                            {t(subItem.title)}
                           </a>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>

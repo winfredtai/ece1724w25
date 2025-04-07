@@ -42,6 +42,7 @@ import {
 import { CreationCard } from "@/components/creation-card";
 import { Tables } from "@/types/supabase";
 import { useAuth } from "@/components/authProvider";
+import { useTranslations } from "next-intl";
 
 type UserCreation = Partial<Tables<"video_generation_task_definitions">> &
   Partial<Tables<"video_generation_task_statuses">>;
@@ -60,6 +61,7 @@ type UserCredits = Tables<"user_credits">;
 
 const ProfilePage: React.FC = () => {
   const router = useRouter();
+  const t = useTranslations("User.Profile");
   const supabase = createClient();
   const [isEditing, setIsEditing] = useState(false);
   const [profileForm, setProfileForm] = useState({
@@ -131,25 +133,25 @@ const ProfilePage: React.FC = () => {
         ...stats,
       }));
     } catch (error) {
-      console.error("获取用户创作失败:", error);
+      console.error("Failed to fetch creations:", error);
     }
   }, []);
 
   const fetchUserCredits = useCallback(async () => {
     try {
-      console.log("Fetching user credits...");
+      // console.log("Fetching user credits...");
       const response = await fetch("/api/user/fetch-credit");
-      console.log("Credits API response status:", response.status);
+      // console.log("Credits API response status:", response.status);
 
       if (!response.ok) {
         throw new Error(`Error fetching credits: ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log("Received credits data:", data);
+      // console.log("Received credits data:", data);
       setUserCredits(data);
     } catch (error) {
-      console.error("获取用户积分失败:", error);
+      console.error("Failed to fetch credits:", error);
     }
   }, []);
 
@@ -211,7 +213,7 @@ const ProfilePage: React.FC = () => {
         }));
       }
     } catch (error) {
-      console.error("删除创作失败:", error);
+      console.error("Failed to delete creation:", error);
     }
   };
 
@@ -235,14 +237,12 @@ const ProfilePage: React.FC = () => {
 
   const handleSaveProfile = async () => {
     try {
-      // 暂未实现真正的保存逻辑，仅模拟效果
       setIsEditing(false);
     } catch (error) {
-      console.error("更新资料失败:", error);
+      console.error("Failed to update profile:", error);
     }
   };
 
-  // 获取用户展示信息
   const getUserInitials = () => {
     if (user?.user_metadata?.full_name) {
       const nameParts = user.user_metadata.full_name.split(" ");
@@ -281,11 +281,11 @@ const ProfilePage: React.FC = () => {
               <div className="flex items-center justify-center md:justify-start space-x-2">
                 <Badge variant="outline" className="flex items-center">
                   <Users className="h-3 w-3 mr-1" />
-                  用户
+                  {t("user")}
                 </Badge>
                 <Badge className="flex items-center bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20">
                   <Crown className="h-3 w-3 mr-1" />
-                  {userCredits?.level || "普通用户"}
+                  {userCredits?.level || t("normalUser")}
                 </Badge>
               </div>
             </div>
@@ -299,18 +299,18 @@ const ProfilePage: React.FC = () => {
               {isEditing ? (
                 <>
                   <Save className="h-4 w-4 mr-1" />
-                  保存
+                  {t("saveProfile")}
                 </>
               ) : (
                 <>
                   <Edit2 className="h-4 w-4 mr-1" />
-                  编辑资料
+                  {t("editProfile")}
                 </>
               )}
             </Button>
             <Button size="sm" onClick={() => router.push("/text-to-video")}>
               <Film className="h-4 w-4 mr-1" />
-              新建创作
+              {t("newCreation")}
             </Button>
           </div>
         </div>
@@ -324,7 +324,7 @@ const ProfilePage: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Star className="h-5 w-5 mr-2 text-yellow-500" />
-                账户信息
+                {t("accountInfo")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -332,7 +332,7 @@ const ProfilePage: React.FC = () => {
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm font-medium mb-1 block">
-                      用户名
+                      {t("username")}
                     </label>
                     <Input
                       name="name"
@@ -342,7 +342,7 @@ const ProfilePage: React.FC = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-1 block">
-                      邮箱
+                      {t("email")}
                     </label>
                     <Input
                       name="email"
@@ -355,13 +355,15 @@ const ProfilePage: React.FC = () => {
                     onClick={handleSaveProfile}
                     className="mt-2"
                   >
-                    保存更改
+                    {t("saveChanges")}
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-medium mb-1">用户名</h3>
+                    <h3 className="text-sm font-medium mb-1">
+                      {t("username")}
+                    </h3>
                     <p className="text-sm">
                       {user?.user_metadata?.full_name ||
                         user?.user_metadata?.name ||
@@ -369,11 +371,13 @@ const ProfilePage: React.FC = () => {
                     </p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium mb-1">邮箱</h3>
+                    <h3 className="text-sm font-medium mb-1">{t("email")}</h3>
                     <p className="text-sm">{user?.email || "-"}</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium mb-1">注册时间</h3>
+                    <h3 className="text-sm font-medium mb-1">
+                      {t("registeredAt")}
+                    </h3>
                     <p className="text-sm">
                       {user?.created_at
                         ? new Date(user.created_at).toLocaleDateString()
@@ -390,7 +394,7 @@ const ProfilePage: React.FC = () => {
                 className="w-full"
                 onClick={logout}
               >
-                退出登录
+                {t("logout")}
               </Button>
             </CardFooter>
           </Card>
@@ -400,19 +404,19 @@ const ProfilePage: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Crown className="h-5 w-5 mr-2 text-yellow-500" />
-                我的积分
+                {t("credits")}
               </CardTitle>
               <CardDescription>
-                当前等级:{" "}
+                {t("currentLevel")}:{" "}
                 <span className="font-medium">
-                  {userCredits?.level || "普通用户"}
+                  {userCredits?.level || t("normalUser")}
                 </span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-sm">积分余额</span>
+                  <span className="text-sm">{t("creditBalance")}</span>
                   <span className="text-sm font-medium">
                     {userCredits?.credits_balance || 0}
                   </span>
@@ -429,19 +433,23 @@ const ProfilePage: React.FC = () => {
                 />
               </div>
               <div>
-                <h3 className="text-sm font-medium mb-1">总购买积分</h3>
+                <h3 className="text-sm font-medium mb-1">
+                  {t("purchasedCredits")}
+                </h3>
                 <p className="text-sm">
                   {userCredits?.total_credits_purchased || 0}
                 </p>
               </div>
               <div>
-                <h3 className="text-sm font-medium mb-1">已使用积分</h3>
+                <h3 className="text-sm font-medium mb-1">{t("usedCredits")}</h3>
                 <p className="text-sm">
                   {userCredits?.total_credits_used || 0}
                 </p>
               </div>
               <div>
-                <h3 className="text-sm font-medium mb-1">最后购买时间</h3>
+                <h3 className="text-sm font-medium mb-1">
+                  {t("lastPurchaseDate")}
+                </h3>
                 <p className="text-sm">
                   {userCredits?.last_purchase_date
                     ? new Date(
@@ -453,7 +461,7 @@ const ProfilePage: React.FC = () => {
             </CardContent>
             <CardFooter>
               <Button variant="outline" size="sm" className="w-full">
-                购买积分
+                {t("purchaseCredits")}
               </Button>
             </CardFooter>
           </Card>
@@ -463,35 +471,43 @@ const ProfilePage: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <BarChart className="h-5 w-5 mr-2 text-blue-500" />
-                创作统计
+                {t("stats")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-primary/5 p-3 rounded-lg">
-                  <h3 className="text-sm font-medium mb-1">总创作数</h3>
+                  <h3 className="text-sm font-medium mb-1">
+                    {t("totalCreations")}
+                  </h3>
                   <p className="text-2xl font-bold">
                     {userStats.totalCreations}
                   </p>
                 </div>
                 <div className="bg-primary/5 p-3 rounded-lg">
-                  <h3 className="text-sm font-medium mb-1">已完成</h3>
+                  <h3 className="text-sm font-medium mb-1">
+                    {t("completedCreations")}
+                  </h3>
                   <p className="text-2xl font-bold">
                     {userStats.completedCreations}
                   </p>
                 </div>
                 <div className="bg-primary/5 p-3 rounded-lg">
-                  <h3 className="text-sm font-medium mb-1">视频</h3>
+                  <h3 className="text-sm font-medium mb-1">
+                    {t("videoCount")}
+                  </h3>
                   <p className="text-2xl font-bold">{userStats.videoCount}</p>
                 </div>
                 <div className="bg-primary/5 p-3 rounded-lg">
-                  <h3 className="text-sm font-medium mb-1">图片</h3>
+                  <h3 className="text-sm font-medium mb-1">
+                    {t("imageCount")}
+                  </h3>
                   <p className="text-2xl font-bold">{userStats.imageCount}</p>
                 </div>
               </div>
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-sm">使用量</span>
+                  <span className="text-sm">{t("usagePercentage")}</span>
                   <span className="text-sm font-medium">
                     {userStats.usagePercentage}%
                   </span>
@@ -509,16 +525,16 @@ const ProfilePage: React.FC = () => {
               <div>
                 <CardTitle className="text-2xl flex items-center">
                   <Film className="h-5 w-5 mr-2" />
-                  我的创作
+                  {t("myCreations")}
                 </CardTitle>
-                <CardDescription>查看和管理您的所有AI创作</CardDescription>
+                <CardDescription>{t("myCreationsDescription")}</CardDescription>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/text-to-video")}
               >
-                创建新视频
+                {t("newCreation")}
               </Button>
             </CardHeader>
 
@@ -526,20 +542,20 @@ const ProfilePage: React.FC = () => {
               <Tabs defaultValue="all" className="w-full">
                 <div className="flex justify-between items-center mb-6">
                   <TabsList>
-                    <TabsTrigger value="all">全部</TabsTrigger>
-                    <TabsTrigger value="videos">视频</TabsTrigger>
-                    <TabsTrigger value="images">图片</TabsTrigger>
+                    <TabsTrigger value="all">{t("all")}</TabsTrigger>
+                    <TabsTrigger value="videos">{t("videos")}</TabsTrigger>
+                    <TabsTrigger value="images">{t("images")}</TabsTrigger>
                   </TabsList>
 
                   <Select defaultValue="newest">
                     <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="排序方式" />
+                      <SelectValue placeholder={t("sort")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="newest">最新创建</SelectItem>
-                      <SelectItem value="oldest">最早创建</SelectItem>
-                      <SelectItem value="a-z">按名称 A-Z</SelectItem>
-                      <SelectItem value="z-a">按名称 Z-A</SelectItem>
+                      <SelectItem value="newest">{t("newest")}</SelectItem>
+                      <SelectItem value="oldest">{t("oldest")}</SelectItem>
+                      <SelectItem value="a-z">{t("a-z")}</SelectItem>
+                      <SelectItem value="z-a">{t("z-a")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -555,9 +571,9 @@ const ProfilePage: React.FC = () => {
                             creation={{
                               id: creation.id?.toString() || "",
                               type:
-                                creation.task_type === "video"
-                                  ? "video"
-                                  : "image",
+                                creation.task_type === "image"
+                                  ? "image"
+                                  : "video",
                               title: creation.prompt || "Untitled",
                               description: creation.prompt || "",
                               thumbnailUrl:
@@ -585,7 +601,7 @@ const ProfilePage: React.FC = () => {
                           variant="outline"
                           className="w-full max-w-xs"
                         >
-                          查看全部创作
+                          {t("viewAllCreations")}
                         </Button>
                       </div>
 
@@ -623,10 +639,10 @@ const ProfilePage: React.FC = () => {
                   ) : (
                     <div className="text-center py-12">
                       <div className="text-muted-foreground mb-4">
-                        您还没有创作任何内容
+                        {t("noCreations")}
                       </div>
                       <Button onClick={() => router.push("/text-to-video")}>
-                        创建第一个视频
+                        {t("createFirstVideo")}
                       </Button>
                     </div>
                   )}
@@ -682,7 +698,7 @@ const ProfilePage: React.FC = () => {
                             variant="outline"
                             className="w-full max-w-xs"
                           >
-                            查看全部视频
+                            {t("viewAllCreations")}
                           </Button>
                         </div>
                       )}
@@ -690,10 +706,10 @@ const ProfilePage: React.FC = () => {
                   ) : (
                     <div className="text-center py-12">
                       <div className="text-muted-foreground mb-4">
-                        您还没有创建任何视频
+                        {t("noVideos")}
                       </div>
                       <Button onClick={() => router.push("/text-to-video")}>
-                        创建第一个视频
+                        {t("createFirstVideo")}
                       </Button>
                     </div>
                   )}
@@ -749,7 +765,7 @@ const ProfilePage: React.FC = () => {
                             variant="outline"
                             className="w-full max-w-xs"
                           >
-                            查看全部图片
+                            {t("viewAllCreations")}
                           </Button>
                         </div>
                       )}
@@ -757,10 +773,10 @@ const ProfilePage: React.FC = () => {
                   ) : (
                     <div className="text-center py-12">
                       <div className="text-muted-foreground mb-4">
-                        您还没有创建任何图片
+                        {t("noImages")}
                       </div>
                       <Button onClick={() => router.push("/text-to-image")}>
-                        创建第一个图片
+                        {t("createFirstImage")}
                       </Button>
                     </div>
                   )}
@@ -774,22 +790,30 @@ const ProfilePage: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Settings className="h-5 w-5 mr-2" />
-                账户设置
+                {t("Settings.title")}
               </CardTitle>
-              <CardDescription>管理您的账户偏好设置</CardDescription>
+              <CardDescription>{t("Settings.description")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="preferences" className="w-full">
                 <TabsList className="mb-6">
-                  <TabsTrigger value="preferences">偏好设置</TabsTrigger>
-                  <TabsTrigger value="notifications">通知设置</TabsTrigger>
-                  <TabsTrigger value="security">安全设置</TabsTrigger>
+                  <TabsTrigger value="preferences">
+                    {t("Settings.preferences")}
+                  </TabsTrigger>
+                  <TabsTrigger value="notifications">
+                    {t("Settings.notifications")}
+                  </TabsTrigger>
+                  <TabsTrigger value="security">
+                    {t("Settings.security")}
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="preferences">
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-sm font-medium mb-3">界面主题</h3>
+                      <h3 className="text-sm font-medium mb-3">
+                        {t("Settings.theme")}
+                      </h3>
                       <div className="flex space-x-4">
                         <div
                           className={`border rounded-md p-3 flex flex-col items-center cursor-pointer ${profileForm.preferences.theme === "light" ? "border-primary" : "hover:border-primary"}`}
@@ -798,7 +822,7 @@ const ProfilePage: React.FC = () => {
                           }
                         >
                           <div className="w-20 h-12 bg-white rounded mb-2"></div>
-                          <span className="text-sm">浅色</span>
+                          <span className="text-sm">{t("Settings.light")}</span>
                         </div>
                         <div
                           className={`border rounded-md p-3 flex flex-col items-center cursor-pointer ${profileForm.preferences.theme === "dark" ? "border-primary" : "hover:border-primary"}`}
@@ -807,7 +831,7 @@ const ProfilePage: React.FC = () => {
                           }
                         >
                           <div className="w-20 h-12 bg-gray-800 rounded mb-2"></div>
-                          <span className="text-sm">深色</span>
+                          <span className="text-sm">{t("Settings.dark")}</span>
                         </div>
                         <div
                           className={`border rounded-md p-3 flex flex-col items-center cursor-pointer ${profileForm.preferences.theme === "system" ? "border-primary" : "hover:border-primary"}`}
@@ -816,13 +840,17 @@ const ProfilePage: React.FC = () => {
                           }
                         >
                           <div className="w-20 h-12 bg-gradient-to-r from-gray-100 to-gray-800 rounded mb-2"></div>
-                          <span className="text-sm">跟随系统</span>
+                          <span className="text-sm">
+                            {t("Settings.system")}
+                          </span>
                         </div>
                       </div>
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-medium mb-3">语言设置</h3>
+                      <h3 className="text-sm font-medium mb-3">
+                        {t("Settings.language")}
+                      </h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div
                           className={`border rounded-md p-3 flex items-center cursor-pointer ${profileForm.preferences.language === "zh-CN" ? "border-primary" : "hover:border-primary"}`}
@@ -853,10 +881,14 @@ const ProfilePage: React.FC = () => {
 
                 <TabsContent value="notifications">
                   <div>
-                    <h3 className="text-sm font-medium mb-3">电子邮件通知</h3>
+                    <h3 className="text-sm font-medium mb-3">
+                      {t("Settings.emailNotification")}
+                    </h3>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm">创作完成通知</label>
+                        <label className="text-sm">
+                          {t("Settings.creationCompletion")}
+                        </label>
                         <input
                           type="checkbox"
                           className="toggle"
@@ -870,7 +902,9 @@ const ProfilePage: React.FC = () => {
                         />
                       </div>
                       <div className="flex items-center justify-between">
-                        <label className="text-sm">系统更新通知</label>
+                        <label className="text-sm">
+                          {t("Settings.systemUpdate")}
+                        </label>
                         <input
                           type="checkbox"
                           className="toggle"
@@ -878,7 +912,9 @@ const ProfilePage: React.FC = () => {
                         />
                       </div>
                       <div className="flex items-center justify-between">
-                        <label className="text-sm">营销邮件</label>
+                        <label className="text-sm">
+                          {t("Settings.marketingEmail")}
+                        </label>
                         <input type="checkbox" className="toggle" />
                       </div>
                     </div>
@@ -888,16 +924,22 @@ const ProfilePage: React.FC = () => {
                 <TabsContent value="security">
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-sm font-medium mb-3">账户安全</h3>
+                      <h3 className="text-sm font-medium mb-3">
+                        {t("Settings.security")}
+                      </h3>
                       <div className="space-y-4">
-                        <Button variant="outline">修改密码</Button>
+                        <Button variant="outline">
+                          {t("Settings.changePassword")}
+                        </Button>
                         <div>
-                          <h4 className="text-sm font-medium mb-1">两步验证</h4>
+                          <h4 className="text-sm font-medium mb-1">
+                            {t("Settings.twoFactorAuth")}
+                          </h4>
                           <p className="text-sm text-muted-foreground mb-2">
-                            启用两步验证以提高账户安全性
+                            {t("Settings.twoFactorAuthDescription")}
                           </p>
                           <Button variant="secondary" size="sm">
-                            设置两步验证
+                            {t("Settings.setupTwoFactorAuth")}
                           </Button>
                         </div>
                       </div>

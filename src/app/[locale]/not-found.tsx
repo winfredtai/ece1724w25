@@ -5,7 +5,8 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Home, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 
 // Generate particle data outside component to avoid regeneration
 const generateParticles = (count: number) => {
@@ -44,6 +45,7 @@ const NotFound: React.FC = () => {
   const router = useRouter();
   const [countdown, setCountdown] = useState(10);
   const particlesRef = useRef(generateParticles(30));
+  const t = useTranslations("Error");
 
   // Auto-redirect countdown timer
   useEffect(() => {
@@ -137,7 +139,7 @@ const NotFound: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            页面未找到
+            {t("notFound")}
           </motion.h2>
 
           <motion.div
@@ -146,7 +148,7 @@ const NotFound: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7 }}
           >
-            您访问的页面不存在或已被移除。请检查URL或返回首页。
+            {t("description")}
           </motion.div>
 
           {/* Buttons with hover animations */}
@@ -163,7 +165,7 @@ const NotFound: React.FC = () => {
                 variant="outline"
                 className="gap-2 w-full"
               >
-                返回上一页
+                {t("returnLastPage")}
               </Button>
             </motion.div>
 
@@ -188,7 +190,7 @@ const NotFound: React.FC = () => {
                   >
                     <Home className="h-4 w-4" />
                   </motion.span>
-                  返回首页
+                  {t("returnHome")}
                 </Link>
               </Button>
             </motion.div>
@@ -223,7 +225,7 @@ const NotFound: React.FC = () => {
                   repeat: Infinity,
                 }}
               >
-                {countdown}秒后自动跳转到首页...
+                {t("returnHomeWithSecond", { second: countdown })}
               </motion.span>
             </div>
           </motion.div>

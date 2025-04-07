@@ -133,7 +133,7 @@
   }
 }
 
-/* 添加自定义科技风格样式和动画 */
+/* Add custom tech style and animations */
 @keyframes glow {
   0%,
   100% {
@@ -166,7 +166,7 @@
   }
 }
 
-/* 科技风格卡片 */
+/* Tech style card */
 .tech-card {
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(10px);
@@ -181,22 +181,22 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* 发光效果 */
+/* Glow effect */
 .glow-effect {
   animation: glow 3s infinite;
 }
 
-/* 悬浮动画 */
+/* Float animation */
 .float-animation {
   animation: float 6s ease-in-out infinite;
 }
 
-/* 脉冲动画 */
+/* Pulse animation */
 .pulse-animation {
   animation: pulse-subtle 4s ease-in-out infinite;
 }
 
-/* 渐变边框 */
+/* Gradient border */
 .gradient-border {
   position: relative;
   border-radius: 0.5rem;

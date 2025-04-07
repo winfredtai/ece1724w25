@@ -171,6 +171,7 @@ export const CreationCard: React.FC<CreationCardProps> = ({
                   preload="auto"
                   onLoadedData={handleVideoLoad}
                   onError={handleError}
+                  disablePictureInPicture
                   className={cn(
                     "absolute inset-0 w-full h-full object-cover",
                     !isHovered && "opacity-0",

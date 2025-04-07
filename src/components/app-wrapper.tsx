@@ -1,20 +1,19 @@
 "use client";
 
-import React from "react";
-import { AppSidebar } from "./layout/sidebar";
-import { AppHeader } from "./layout/header";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { AppSidebar } from "@/app/[locale]/layout/sidebar";
+import { AppHeader } from "@/app/[locale]/layout/header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
-interface LayoutProps {
+interface AppWrapperProps {
   children: React.ReactNode;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export function AppWrapper({ children }: AppWrapperProps) {
   const [scrolled, setScrolled] = useState(false);
 
-  // 添加滚动效果检测
+  // Add scroll effect detection
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);

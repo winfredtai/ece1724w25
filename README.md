@@ -122,13 +122,13 @@ The My Creations section provides users with a personalized library of all their
 ### Homepage
 We also implement the homepage as the confluence page where where users can discover and explore content created by other users. All the videos here serve as a dynamic showcase of recently generated content from users across the platform. This section functions as a demonstration of platform capabilities while inspiring new users with practical applications.
 
-![homepage](img/homepage.png)
+![homepage](img/Homepage.png)
 
 ### Mobile and PC:
 SimpleVideo's responsive interface is built with React, Next.js, and shadcn/ui components which ensures cross-environment compatibility tools and accessibility across devices (mobile and PC) while, it will automatically adapt to different screen sizes and orientations. On mobile devices, the interface maintains the same functionality while reorganizing elements to fit smaller screens.
 
 ![mobile](img/mobile.jpg)
-![homepage](img/homepage.png)
+![homepage](img/Homepage.png)
 
 
 

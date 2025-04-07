@@ -33,6 +33,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface Creation {
   id: string;
@@ -56,6 +57,10 @@ export const CreationCard: React.FC<CreationCardProps> = ({
 }) => {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showPreview, setShowPreview] = React.useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [isVideoLoaded, setIsVideoLoaded] = React.useState(false);
+  const [isHovered, setIsHovered] = React.useState(false);
+  const [hasError, setHasError] = React.useState(false);
 
   // Function to format date
   const formatDate = (dateString: string) => {
@@ -65,6 +70,37 @@ export const CreationCard: React.FC<CreationCardProps> = ({
       month: "short",
       day: "numeric",
     });
+  };
+
+  const handleMouseEnter = () => {
+    if (creation.type === "video" && creation.status === "completed") {
+      setIsHovered(true);
+      if (videoRef.current && isVideoLoaded && !hasError) {
+        videoRef.current.play().catch((err) => {
+          console.error("视频播放失败:", err);
+          setHasError(true);
+        });
+      }
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (creation.type === "video") {
+      setIsHovered(false);
+      if (videoRef.current && !hasError) {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+      }
+    }
+  };
+
+  const handleVideoLoad = () => {
+    setIsVideoLoaded(true);
+  };
+
+  const handleError = () => {
+    console.error(`视频加载错误: ${creation.url}`);
+    setHasError(true);
   };
 
   const renderStatusBadge = () => {
@@ -84,27 +120,96 @@ export const CreationCard: React.FC<CreationCardProps> = ({
     <>
       <Card className="overflow-hidden bg-background/80 backdrop-blur-sm hover:shadow-md transition-shadow">
         <div
-          className="relative h-48 bg-cover bg-center cursor-pointer"
-          style={{ backgroundImage: `url(${creation.thumbnailUrl})` }}
+          className="relative h-48 cursor-pointer"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
           onClick={() =>
             creation.status === "completed" && setShowPreview(true)
           }
         >
-          <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
-            {creation.status === "processing" ? (
-              <div className="bg-black bg-opacity-50 rounded-full p-3">
+          {/* 预览内容 */}
+          {creation.type === "video" ? (
+            <>
+              {!isHovered && (
+                <>
+                  {!creation.thumbnailUrl ||
+                  creation.thumbnailUrl ===
+                    "/images/creations/placeholder.jpg" ? (
+                    creation.url ? (
+                      <video
+                        src={creation.url}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        muted
+                        loop
+                        playsInline
+                        preload="metadata"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                        <Film className="h-12 w-12 text-gray-400" />
+                      </div>
+                    )
+                  ) : (
+                    <div
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{
+                        backgroundImage: `url(${creation.thumbnailUrl})`,
+                      }}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* 播放视频 */}
+              {creation.type === "video" && creation.status === "completed" && (
+                <video
+                  ref={videoRef}
+                  src={creation.url}
+                  muted
+                  loop
+                  playsInline
+                  preload="auto"
+                  onLoadedData={handleVideoLoad}
+                  onError={handleError}
+                  disablePictureInPicture
+                  className={cn(
+                    "absolute inset-0 w-full h-full object-cover",
+                    !isHovered && "opacity-0",
+                  )}
+                />
+              )}
+            </>
+          ) : (
+            // 图片预览
+            <div
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url(${creation.thumbnailUrl || creation.url})`,
+              }}
+            />
+          )}
+
+          {/* 加载中显示 */}
+          {creation.status === "processing" && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+              <div className="bg-black/40 rounded-full p-3">
                 <Loader2 className="h-8 w-8 text-white animate-spin" />
               </div>
-            ) : creation.status === "completed" ? (
-              <div className="bg-black bg-opacity-50 rounded-full p-3">
-                {creation.type === "video" ? (
+            </div>
+          )}
+
+          {/* 播放状态指示 */}
+          {creation.type === "video" &&
+            creation.status === "completed" &&
+            !isHovered && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                <div className="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center">
                   <Play className="h-8 w-8 text-white" />
-                ) : (
-                  <ImageIcon className="h-8 w-8 text-white" />
-                )}
+                </div>
               </div>
-            ) : null}
-          </div>
+            )}
+
+          {/* 类型和状态标签 */}
           <div className="absolute top-2 left-2">
             {creation.type === "video" ? (
               <Badge

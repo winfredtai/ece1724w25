@@ -50,7 +50,7 @@ const NotFound: React.FC = () => {
   // Auto-redirect countdown timer
   useEffect(() => {
     if (countdown <= 0) {
-      router.push("/");
+      router.push("/home");
       return;
     }
 

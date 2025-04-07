@@ -12,7 +12,7 @@ export default function AuthCodeError() {
   // Auto-redirect countdown timer
   useEffect(() => {
     if (countdown <= 0) {
-      router.push("/");
+      router.push("/home");
       return;
     }
 
@@ -37,7 +37,7 @@ export default function AuthCodeError() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button onClick={() => router.push("/")}>
+          <Button onClick={() => router.push("/home")}>
             返回首页 ({countdown})
           </Button>
           <Button variant="outline" onClick={() => router.back()}>

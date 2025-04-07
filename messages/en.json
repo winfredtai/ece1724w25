@@ -93,11 +93,11 @@
   "Login": {
     "loading": "Loading...",
     "backToHome": "Back to Home",
-    "welcome": "Welcome to Karavideo.ai",
+    "welcome": "Welcome to SimpleVideo.ai",
     "description": "Login or register to manage and create stunning AI-generated videos",
     "login": "Login to Account",
     "register": "Register Account",
-    "reasons": "Why Choose Karavideo.ai",
+    "reasons": "Why Choose SimpleVideo.ai",
     "loginDescription": "Login to experience our powerful AI video generation capabilities",
     "aiVideoGeneration": "AI Video Generation",
     "aiVideoGenerationDescription": "Create high-quality AI videos in minutes with simple text descriptions",

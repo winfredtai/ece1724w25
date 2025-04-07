@@ -255,7 +255,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
 
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            {t("loginTo")} Karavideo.ai
+            {t("loginTo")} SimpleVideo.ai
           </CardTitle>
         </CardHeader>
 

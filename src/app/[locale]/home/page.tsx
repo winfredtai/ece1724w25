@@ -530,7 +530,7 @@ export default function HomePage() {
                 >
                   AI
                 </Badge>
-                Karavideo.ai
+                SimpleVideo.ai
               </h3>
               <p className="text-muted-foreground">{t("footerDescription")}</p>
               <div className="flex gap-4 mt-6">

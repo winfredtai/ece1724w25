@@ -93,11 +93,11 @@
   "Login": {
     "loading": "加载中...",
     "backToHome": "返回首页",
-    "welcome": "欢迎来到 Karavideo.ai",
+    "welcome": "欢迎来到 SimpleVideo.ai",
     "description": "登录或注册以管理和创建令人惊艳的AI生成视频",
     "login": "登录账户",
     "register": "注册账户",
-    "reasons": "选择 Karavideo.ai 的理由",
+    "reasons": "选择 SimpleVideo.ai 的理由",
     "loginDescription": "登录后即可体验我们强大的AI视频生成功能",
     "aiVideoGeneration": "AI视频生成",
     "aiVideoGenerationDescription": "通过简单的文字描述，几分钟内创建高质量AI视频",

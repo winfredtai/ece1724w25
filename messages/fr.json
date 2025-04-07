@@ -93,11 +93,11 @@
   "Login": {
     "loading": "Chargement...",
     "backToHome": "Retour à l'accueil",
-    "welcome": "Bienvenue sur Karavideo.ai",
+    "welcome": "Bienvenue sur SimpleVideo.ai",
     "description": "Connectez-vous ou inscrivez-vous pour gérer et créer des vidéos époustouflantes générées par l'IA",
     "login": "Se connecter au compte",
     "register": "Créer un compte",
-    "reasons": "Pourquoi choisir Karavideo.ai",
+    "reasons": "Pourquoi choisir SimpleVideo.ai",
     "loginDescription": "Connectez-vous pour découvrir nos puissantes capacités de génération vidéo par IA",
     "aiVideoGeneration": "Génération vidéo par IA",
     "aiVideoGenerationDescription": "Créez des vidéos IA de haute qualité en quelques minutes avec de simples descriptions textuelles",

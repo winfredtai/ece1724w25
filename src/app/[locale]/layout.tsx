@@ -8,7 +8,7 @@ import { routing } from "@/i18n/routing";
 import { AppWrapper } from "@/components/app-wrapper";
 
 export const metadata: Metadata = {
-  title: "Karavideo",
+  title: "SimpleVideo",
   description: "AI-powered video generation platform",
 };
 

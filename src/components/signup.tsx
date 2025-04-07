@@ -124,7 +124,7 @@ const SignUp = ({ onClose, onSwitchToLogin }: SignUpProps) => {
 
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            注册 Karavideo.ai
+            注册 SimpleVideo.ai
           </CardTitle>
         </CardHeader>
 

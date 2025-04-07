@@ -76,7 +76,7 @@ This project fulfills course requirements by implementing:
 The system provides a robust user authentication framework via Sucbase with an additional Google federated login for convenience. Users can choose Google Single Sign-On via the  "Login with Google" button or opt for email-based verification through the OTP system, which requires entering an email address and accquire the One-Time-Pass from their email address. A "Use Password Login" link provides traditional authentication for those who prefer it. Also there's an expandable "Other Login Methods" section, we only implemented the 3 ways of login as mentioned before.
 
 ![login](img/login.png)
-![Google](img/Google.png)
+![Google](img/google.png)
 
 
 ### English, Simplified Chinese and French

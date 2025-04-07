@@ -110,6 +110,32 @@
     "createNewAccount": "创建新账户",
     "loginAccount": "登录账户"
   },
+  "LoginComponent": {
+    "invalidEmail": "请输入有效的电子邮件地址",
+    "sendOtpFailed": "发送OTP失败。请检查您的电子邮件地址并重试。",
+    "verifyOtpFailed": "验证OTP失败。请检查您的OTP并重试。",
+    "loginCertError": "登录失败。请检查您的凭据并重试。",
+    "loginTo": "登录到",
+    "loginWith": "使用 {method} 登录",
+    "orLoginWithEmailOtp": "或使用OTP登录",
+    "email": "电子邮件",
+    "password": "密码",
+    "useOtpLogin": "使用OTP登录",
+    "usePasswordLogin": "使用密码登录",
+    "processing": "处理中...",
+    "login": "登录",
+    "sendOtp": "发送OTP",
+    "backToEmail": "修改电子邮件",
+    "enterOtp": "输入 {email} 的OTP",
+    "resendOtp": "重新发送OTP",
+    "verifyAndLogin": "验证并登录",
+    "otherLoginMethods": "其他登录方式",
+    "ssoLogin": "SSO登录",
+    "phoneLogin": "手机登录",
+    "githubLogin": "GitHub登录",
+    "noAccount": "还没有账户？",
+    "register": "立即注册"
+  },
   "TextToVideo": {
     "Error": {
       "promptRequired": "请输入提示词",

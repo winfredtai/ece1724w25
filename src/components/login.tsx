@@ -22,7 +22,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/components/authProvider";
-
+import { useTranslations } from "next-intl";
 interface LoginProps {
   onClose?: () => void;
   onSwitchToSignUp?: () => void;
@@ -42,6 +42,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
   const { login, loginWithGoogle, loginWithOtp, verifyOtp, getPreviousPath } =
     useAuth();
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const t = useTranslations("LoginComponent");
 
   // Initialize the refs array
   useEffect(() => {
@@ -60,7 +61,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError("请输入有效的电子邮件地址");
+      setError(t("invalidEmail"));
       setIsLoading(false);
       return;
     }
@@ -77,9 +78,8 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
           otpInputRefs.current[0].focus();
         }
       }, 100);
-    } catch (err) {
-      setError("发送验证码失败。请检查您的邮箱地址并重试。");
-      console.error("OTP 发送错误:", err);
+    } catch {
+      setError(t("sendOtpFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -105,9 +105,8 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
       } else if (onClose) {
         onClose(); // Close the modal after successful login
       }
-    } catch (err) {
-      setError("验证码验证失败。请检查您的验证码并重试。");
-      console.error("OTP 验证错误:", err);
+    } catch {
+      setError(t("verifyOtpFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -174,9 +173,8 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
       } else if (onClose) {
         onClose(); // Close the modal after successful login
       }
-    } catch (err) {
-      setError("登录失败。请检查您的凭据并重试。");
-      console.error("登录错误:", err);
+    } catch {
+      setError(t("loginCertError"));
     } finally {
       setIsLoading(false);
     }
@@ -198,8 +196,8 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
     } catch (error) {
       const errorMessage =
         error instanceof Error
-          ? `Google 登录失败: ${error.message}`
-          : "Google 登录失败，请重试。";
+          ? `Google login failed: ${error.message}`
+          : "Google login failed, please try again.";
 
       setError(errorMessage);
       setIsLoading(false);
@@ -257,7 +255,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
 
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            登录 Karavideo.ai
+            {t("loginTo")} Karavideo.ai
           </CardTitle>
         </CardHeader>
 
@@ -296,7 +294,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                 fill="#34A853"
               />
             </svg>
-            <span>通过Google登录</span>
+            <span>{t("loginWith", { method: "Google" })}</span>
           </Button>
 
           <div className="relative">
@@ -305,7 +303,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                或者使用邮箱验证码
+                {t("orLoginWithEmailOtp")}
               </span>
             </div>
           </div>
@@ -318,7 +316,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                   <Mail className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                   <Input
                     type="email"
-                    placeholder="邮箱"
+                    placeholder={t("email")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
@@ -332,7 +330,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                     <Lock className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                     <Input
                       type={showPassword ? "text" : "password"}
-                      placeholder="密码"
+                      placeholder={t("password")}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="pl-10"
@@ -363,7 +361,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                   onClick={toggleLoginMethod}
                   className="text-sm text-primary hover:underline"
                 >
-                  {usePasswordLogin ? "使用验证码登录" : "使用密码登录"}
+                  {usePasswordLogin ? t("useOtpLogin") : t("usePasswordLogin")}
                 </button>
               </div>
 
@@ -374,10 +372,10 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                 onClick={usePasswordLogin ? handlePasswordLogin : handleSendOtp}
               >
                 {isLoading
-                  ? "处理中..."
+                  ? t("processing")
                   : usePasswordLogin
-                    ? "登录"
-                    : "发送验证码"}
+                    ? t("login")
+                    : t("sendOtp")}
               </Button>
             </form>
           ) : (
@@ -389,12 +387,12 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                   className="flex items-center text-sm text-primary hover:underline"
                 >
                   <ArrowLeft className="h-4 w-4 mr-1" />
-                  返回修改邮箱
+                  {t("backToEmail")}
                 </button>
               </div>
 
               <div className="text-sm text-center mb-2">
-                请输入发送到 {email} 的 6 位验证码
+                {t("enterOtp", { email: email })}
               </div>
 
               <div className="grid grid-cols-6 gap-2 mb-4">
@@ -435,7 +433,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                   className="text-primary hover:underline"
                   disabled={isLoading}
                 >
-                  重新发送验证码
+                  {t("resendOtp")}
                 </button>
               </div>
 
@@ -444,7 +442,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                 className="w-full"
                 disabled={isLoading || otp.some((digit) => !digit)}
               >
-                {isLoading ? "验证中..." : "验证并登录"}
+                {isLoading ? t("processing") : t("verifyAndLogin")}
               </Button>
             </form>
           )}
@@ -457,7 +455,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                 onClick={() => setShowOtherLoginMethods(!showOtherLoginMethods)}
                 className="w-full flex items-center justify-between text-sm text-muted-foreground hover:text-foreground py-2"
               >
-                <span>其他登录方式</span>
+                <span>{t("otherLoginMethods")}</span>
                 <ChevronDown
                   className={`h-4 w-4 transition-transform ${
                     showOtherLoginMethods ? "rotate-180" : ""
@@ -489,7 +487,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                       <circle cx="12" cy="10" r="3" />
                       <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
                     </svg>
-                    <span>SSO 登录</span>
+                    <span>{t("ssoLogin")}</span>
                   </Button>
 
                   <Button
@@ -511,7 +509,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                     >
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                     </svg>
-                    <span>手机号登录</span>
+                    <span>{t("phoneLogin")}</span>
                   </Button>
 
                   <Button
@@ -533,7 +531,7 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
                     >
                       <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
                     </svg>
-                    <span>GitHub 登录</span>
+                    <span>{t("githubLogin")}</span>
                   </Button>
                 </div>
               )}
@@ -543,13 +541,13 @@ const Login = ({ onClose, onSwitchToSignUp }: LoginProps) => {
 
         <CardFooter className="flex flex-col space-y-2">
           <div className="text-sm text-center text-muted-foreground">
-            没有账号？{" "}
+            {t("noAccount")}{" "}
             <button
               type="button"
               onClick={onSwitchToSignUp}
               className="text-primary hover:underline"
             >
-              注册
+              {t("register")}
             </button>
           </div>
         </CardFooter>

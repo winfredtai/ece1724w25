@@ -68,7 +68,7 @@ const LoginPage: React.FC = () => {
         <Button
           variant="ghost"
           className="mb-6"
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/home")}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           {t("backToHome")}

@@ -110,6 +110,32 @@
     "createNewAccount": "Create New Account",
     "loginAccount": "Login to Account"
   },
+  "LoginComponent": {
+    "invalidEmail": "Please enter a valid email address",
+    "sendOtpFailed": "Failed to send OTP. Please check your email address and try again.",
+    "verifyOtpFailed": "Failed to verify OTP. Please check your OTP and try again.",
+    "loginCertError": "Login failed. Please check your credentials and try again.",
+    "loginTo": "Login to",
+    "loginWith": "Login with {method}",
+    "orLoginWithEmailOtp": "Or login with OTP",
+    "email": "Email",
+    "password": "Password",
+    "useOtpLogin": "Use OTP Login",
+    "usePasswordLogin": "Use Password Login",
+    "processing": "Processing...",
+    "login": "Login",
+    "sendOtp": "Send OTP",
+    "backToEmail": "Modify Email",
+    "enterOtp": "Enter OTP to {email}",
+    "resendOtp": "Resend OTP",
+    "verifyAndLogin": "Verify and Login",
+    "otherLoginMethods": "Other Login Methods",
+    "ssoLogin": "SSO Login",
+    "phoneLogin": "Phone Login",
+    "githubLogin": "GitHub Login",
+    "noAccount": "Don't have an account?",
+    "register": "Register Account"
+  },
   "TextToVideo": {
     "Error": {
       "promptRequired": "Please enter a prompt",

@@ -110,6 +110,32 @@
     "createNewAccount": "Créer un nouveau compte",
     "loginAccount": "Se connecter au compte"
   },
+  "LoginComponent": {
+    "invalidEmail": "Veuillez entrer une adresse email valide",
+    "sendOtpFailed": "Échec de l'envoi de l'OTP. Veuillez vérifier votre adresse email et réessayer.",
+    "verifyOtpFailed": "Échec de la vérification de l'OTP. Veuillez vérifier votre OTP et réessayer.",
+    "loginCertError": "Échec de la connexion. Veuillez vérifier vos identifiants et réessayer.",
+    "loginTo": "Se connecter à",
+    "loginWith": "Se connecter avec {method}",
+    "orLoginWithEmailOtp": "Ou connectez-vous avec OTP",
+    "email": "Email",
+    "password": "Mot de passe",
+    "useOtpLogin": "Utiliser la connexion OTP",
+    "usePasswordLogin": "Utiliser la connexion par mot de passe",
+    "processing": "Traitement...",
+    "login": "Se connecter",
+    "sendOtp": "Envoyer OTP",
+    "backToEmail": "Modifier l'email",
+    "enterOtp": "Entrez OTP pour {email}",
+    "resendOtp": "Renvoyer OTP",
+    "verifyAndLogin": "Vérifier et Se connecter",
+    "otherLoginMethods": "Autres méthodes de connexion",
+    "ssoLogin": "Connexion SSO",
+    "phoneLogin": "Connexion par téléphone",
+    "githubLogin": "Connexion par GitHub",
+    "noAccount": "Vous n'avez pas de compte ?",
+    "register": "Inscrivez-vous maintenant"
+  },
   "TextToVideo": {
     "Error": {
       "promptRequired": "Veuillez saisir une invite",
